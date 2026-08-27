@@ -15,3 +15,5 @@ Une ligne datée par choix. Contexte complet : document projet dans le wiki.
 - 2026-08-27 — Une liste par personne ; la visibilité « lien seulement » par intention remplace les listes multiples.
 - 2026-08-27 — L'hôte peut effacer une réponse ; rate limiting minimal sur les formulaires sans compte.
 - 2026-08-27 — Instance de Gilles : création de listes sur code d'invitation.
+- 2026-08-27 — Vocabulaire du domaine en français jusque dans le schéma SQL (listes, intentions, reponses) : le vocabulaire fait partie du produit.
+- 2026-08-27 — Contraintes CHECK comme première ligne des conventions : le statut « non » et l'intention sans borne (ni date ni échéance) sont impossibles en base, pas seulement dans l'interface.
