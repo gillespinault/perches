@@ -1,0 +1,121 @@
+/* Perches — une lettre avant un formulaire. */
+
+:root {
+  --encre: #2c2721;
+  --papier: #faf6ef;
+  --doux: #8a7f70;
+  --trait: #e2d9cb;
+  --accent: #7a5c3e;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  background: var(--papier);
+  color: var(--encre);
+  line-height: 1.6;
+  font-size: 1.05rem;
+}
+
+main {
+  max-width: 38rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 3rem;
+}
+
+h1 { font-size: 1.7rem; font-weight: normal; margin: 0 0 .75rem; }
+h2 { font-size: 1.2rem; font-weight: normal; margin: 2.2rem 0 .6rem; border-bottom: 1px solid var(--trait); padding-bottom: .25rem; }
+h3 { font-size: 1.05rem; margin: 0 0 .2rem; }
+
+a { color: var(--accent); }
+
+.citation { font-style: italic; color: var(--doux); }
+.etat { color: var(--accent); font-style: italic; margin-top: -.5rem; }
+.lettre { white-space: pre-line; margin: 1.2rem 0 2rem; }
+.description { white-space: pre-line; margin: 1rem 0; }
+.quand { color: var(--doux); margin: .1rem 0; }
+.jyvais { font-style: italic; color: var(--doux); }
+.capacite, .qui { color: var(--doux); }
+.silence, .passee { color: var(--doux); font-style: italic; }
+.annulee { color: #8c4a3c; font-style: italic; }
+.vide { color: var(--doux); font-style: italic; }
+.discret { color: var(--doux); font-size: .9em; }
+.fil { color: var(--doux); font-size: .95rem; }
+.resume { color: var(--doux); }
+
+article { margin: 1.4rem 0; }
+article.edition { border-left: 2px solid var(--trait); padding-left: 1rem; }
+article.passee { opacity: .8; }
+
+form { margin: 1rem 0; }
+form.enligne { display: inline; margin: 0; }
+label { display: block; margin: .7rem 0; }
+input, textarea, select {
+  display: block;
+  width: 100%;
+  margin-top: .25rem;
+  padding: .45rem .6rem;
+  font: inherit;
+  font-size: 1rem;
+  border: 1px solid var(--trait);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--encre);
+}
+input[type="radio"], input[type="checkbox"] {
+  display: inline;
+  width: auto;
+  margin-right: .4rem;
+}
+fieldset { border: 1px solid var(--trait); border-radius: 4px; margin: .8rem 0; }
+fieldset label { display: inline-block; margin: .2rem 1rem .2rem 0; }
+legend { color: var(--doux); padding: 0 .4rem; }
+label.case { color: var(--doux); font-size: .95rem; }
+
+button {
+  font: inherit;
+  padding: .5rem 1.1rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--papier);
+  cursor: pointer;
+}
+button.sobre { background: transparent; color: var(--accent); }
+button.discret {
+  background: transparent;
+  color: var(--doux);
+  border: none;
+  padding: 0 .3rem;
+  font-size: .85em;
+  text-decoration: underline;
+}
+
+ul.reponses { list-style: none; padding-left: 0; }
+ul.reponses li { margin: .3rem 0; }
+
+details { margin: .6rem 0; }
+summary { color: var(--doux); cursor: pointer; }
+
+code {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: .9em;
+  background: #f1ebe0;
+  padding: .15rem .35rem;
+  border-radius: 3px;
+  word-break: break-all;
+}
+
+.exports { margin-top: 2.5rem; font-size: .9rem; color: var(--doux); }
+.exports a { color: var(--doux); }
+
+footer {
+  max-width: 38rem;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+  color: var(--doux);
+  font-size: .85rem;
+  border-top: 1px solid var(--trait);
+}

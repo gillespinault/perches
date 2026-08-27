@@ -1,0 +1,24 @@
+{{define "entete"}}<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.TitrePage}}</title>
+<link rel="stylesheet" href="/static/style.css">
+{{with .OG}}<meta property="og:title" content="{{.Titre}}">
+<meta property="og:description" content="{{.Description}}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{.URL}}">
+{{end}}</head>
+<body>
+<main>
+{{end}}
+
+{{define "pied"}}
+</main>
+<footer>
+<p>Perches — le silence vaut « pas cette fois ».</p>
+</footer>
+</body>
+</html>
+{{end}}

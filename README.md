@@ -7,7 +7,8 @@ Perches permet de dire cela à peu de frais et sans créer d'obligation — et �
 de répondre d'un geste : sans compte, sans application, sans négociation, sans que le
 silence soit un refus.
 
-**Statut : pré-v0.** Rien à installer encore.
+**Statut : v0.** Le geste de base fonctionne : liste, intentions datées, réponses,
+exports, rappels. La variante « à fixer » et les croisements viendront — ou pas — plus tard.
 Ce projet est maintenu par intermittence ; le silence vaut « pas maintenant ».
 
 ## Le geste : l'intention, pas l'invitation
@@ -77,6 +78,22 @@ sur code d'invitation, ou fermée.
 
 Les choix d'architecture sont notés dans [DECISIONS.md](DECISIONS.md), une ligne datée
 par choix.
+
+## Installation
+
+```sh
+docker compose up -d        # l'instance écoute sur :8080
+```
+
+Ou sans Docker : `go build && ./perches`.
+
+Variables d'environnement : `PERCHES_DB` (chemin SQLite), `PERCHES_ADDR`,
+`PERCHES_BASE_URL`, `PERCHES_POLITIQUE` (`ouverte` | `invitation` | `fermee`),
+`PERCHES_SMTP_HOTE/PORT/UTILISATEUR/MDP/DE` (sans SMTP, les courriels sont
+journalisés). Un code d'invitation se génère avec `perches -nouveau-code`.
+
+Les conventions sont encodées dans la suite de tests : `go test ./...`
+(voir [docs/tests-conventions.md](docs/tests-conventions.md)).
 
 ## Licence
 

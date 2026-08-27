@@ -1,0 +1,36 @@
+{{template "entete" .}}
+<p class="fil"><a href="/l/{{.Liste.Slug}}">{{.Liste.Titre}}</a>{{with .Liste.Etat}} · {{.}}{{end}}</p>
+<h1>{{.I.Titre}}</h1>
+<p class="quand">{{quandfr .I.Quand}}{{with .I.Lieu}} — {{.}}{{end}}</p>
+{{if .I.URLExterne.Valid}}<p class="lien-externe"><a href="{{.I.URLExterne.String}}" rel="noopener">{{.I.URLExterne.String}}</a></p>{{end}}
+{{if .I.AnnuleeLe.Valid}}<p class="annulee">Cette intention est annulée.</p>{{end}}
+{{with .I.Description}}<div class="description">{{.}}</div>{{end}}
+{{if .I.JyVais}}<p class="jyvais">J'y vais de toute façon — que quelqu'un vienne ou pas.</p>{{end}}
+{{if .I.Capacite.Valid}}<p class="capacite">Capacité indicative : {{.I.Capacite.Int64}}.</p>{{end}}
+{{if .PrenomsJySerai}}<p class="qui">Seront là : {{joindre .PrenomsJySerai ", "}}.</p>{{end}}
+{{if .PrenomsPeutEtre}}<p class="qui">Peut-être : {{joindre .PrenomsPeutEtre ", "}}.</p>{{end}}
+
+{{if .FormulaireOuvert}}
+<form method="post" action="/i/{{.I.Jeton}}/reponses" class="reponse">
+<fieldset>
+<legend>Si ça te dit</legend>
+<label><input type="radio" name="statut" value="jy_serai" required> j'y serai</label>
+<label><input type="radio" name="statut" value="peut_etre"> peut-être</label>
+</fieldset>
+<label>Ton prénom
+<input name="prenom" required maxlength="60"></label>
+<label>Un mot si tu veux — une ligne, lue, sans suite attendue
+<input name="mot" maxlength="200"></label>
+<label class="case"><input type="checkbox" name="prenom_visible" value="1" checked>
+mon prénom peut apparaître sur cette page</label>
+<label>E-mail (optionnel — uniquement le rappel de la veille et les changements de date ou de lieu)
+<input name="email" type="email"></label>
+<button>Envoyer</button>
+</form>
+<p class="silence">Personne n'attend de réponse : le silence vaut « pas cette fois ».</p>
+{{else if not .I.AnnuleeLe.Valid}}
+<p class="passee">C'est passé.</p>
+{{end}}
+
+<p class="exports"><a href="/i/{{.I.Jeton}}.ics">ajouter à mon calendrier</a></p>
+{{template "pied" .}}

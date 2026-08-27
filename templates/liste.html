@@ -1,0 +1,20 @@
+{{template "entete" .}}
+<h1>{{.Liste.Titre}}</h1>
+{{with .Liste.Etat}}<p class="etat">{{.}}</p>{{end}}
+{{with .Liste.Lettre}}<div class="lettre">{{.}}</div>{{end}}
+
+<section class="intentions">
+{{range .Intentions}}
+<article>
+<h2><a href="/i/{{.Jeton}}">{{.Titre}}</a></h2>
+<p class="quand">{{quandfr .Quand}}{{with .Lieu}} — {{.}}{{end}}</p>
+{{if .JyVais}}<p class="jyvais">j'y vais de toute façon</p>{{end}}
+</article>
+{{else}}
+<p class="vide">Rien d'annoncé pour l'instant.</p>
+{{end}}
+</section>
+
+<p class="exports"><a href="/l/{{.Liste.Slug}}.ics">calendrier (ICS)</a> ·
+<a href="/l/{{.Liste.Slug}}.json">JSON</a></p>
+{{template "pied" .}}

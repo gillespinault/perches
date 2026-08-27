@@ -17,3 +17,7 @@ Une ligne datée par choix. Contexte complet : document projet dans le wiki.
 - 2026-08-27 — Instance de Gilles : création de listes sur code d'invitation.
 - 2026-08-27 — Vocabulaire du domaine en français jusque dans le schéma SQL (listes, intentions, reponses) : le vocabulaire fait partie du produit.
 - 2026-08-27 — Contraintes CHECK comme première ligne des conventions : le statut « non » et l'intention sans borne (ni date ni échéance) sont impossibles en base, pas seulement dans l'interface.
+- 2026-08-27 — v0 : stdlib `net/http` (routes Go 1.22+), `modernc.org/sqlite` (pur Go, sans cgo), templates et schéma embarqués dans le binaire, zéro JavaScript, zéro cookie.
+- 2026-08-27 — Identité de l'invité : rien — pas même un cookie. Répondre est un POST anonyme portant un prénom.
+- 2026-08-27 — Rappels de la veille : boucle horaire in-process, idempotente via le journal `envois`. Pas de cron externe.
+- 2026-08-27 — Effacement public des réponses : 30 jours après la date de l'intention. La v0 exige une date (« à fixer » viendra avec la variante ouverte).

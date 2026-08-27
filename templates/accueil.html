@@ -1,0 +1,42 @@
+{{template "entete" .}}
+<h1>Perches</h1>
+<p class="citation">« Pour info, j'ai l'intention de faire telle activité, à tel moment.
+Si quelqu'un veut se joindre à moi, ça me fait plaisir. »</p>
+<p>Une liste d'intentions, sans obligation. Tes amis n'ont besoin de rien :
+un lien, un prénom, un geste. Pas de compte, pas de fil de discussion,
+pas de bouton pour refuser — le silence vaut « pas cette fois ».</p>
+
+<section>
+<h2>Créer ta liste</h2>
+{{if eq .Politique "fermee"}}
+<p>Cette instance n'accepte pas de nouvelles listes.</p>
+{{else}}
+<form method="post" action="/listes">
+{{if eq .Politique "invitation"}}
+<label>Code d'invitation
+<input name="code" required></label>
+{{end}}
+<label>Le titre de ta liste
+<input name="titre" required placeholder="Les perches de Camille"></label>
+<label>Son adresse (minuscules, chiffres, tirets)
+<input name="slug" required pattern="[a-z0-9][a-z0-9-]+" placeholder="camille"></label>
+<label>Ta lettre — quelques lignes libres, dans ta voix
+<textarea name="lettre" rows="6"></textarea></label>
+<label>Ton état, si tu veux l'afficher
+<input name="etat" placeholder="je rouvre doucement"></label>
+<label>E-mail (optionnel — sert uniquement à retrouver ton lien d'édition)
+<input name="email" type="email"></label>
+<button>Créer la liste</button>
+</form>
+{{end}}
+</section>
+
+<section>
+<h2>Lien d'édition égaré ?</h2>
+<form method="post" action="/recuperation">
+<label>L'e-mail donné à la création
+<input name="email" type="email" required></label>
+<button>M'envoyer mes liens</button>
+</form>
+</section>
+{{template "pied" .}}

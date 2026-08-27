@@ -1,6 +1,4 @@
 # Perches — une instance = un conteneur + SQLite.
-# Pré-v0 : ce fichier deviendra fonctionnel avec la première version (`build: .`
-# suppose un Dockerfile qui n'existe pas encore).
 services:
   perches:
     build: .
@@ -9,5 +7,9 @@ services:
     volumes:
       - ./data:/data
     environment:
+      TZ: Europe/Brussels
       PERCHES_DB: /data/perches.db
+      # PERCHES_BASE_URL: https://perches.exemple.be
+      # PERCHES_POLITIQUE: invitation   # ouverte (défaut) | invitation | fermee
+      # PERCHES_SMTP_HOTE / PORT / UTILISATEUR / MDP / DE — sans SMTP, courriels journalisés
     restart: unless-stopped

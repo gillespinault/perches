@@ -1,0 +1,12 @@
+{{template "entete" .}}
+<h1>C'est noté{{if eq .Statut "peut_etre"}} — peut-être{{end}}.</h1>
+<p>{{.Prenom}}, ta réponse est déposée. Rien d'autre ne t'est demandé.</p>
+{{if .AvecEmail}}
+<p>Tu recevras un rappel la veille, et un mot seulement si la date ou le lieu change.</p>
+{{else}}
+<p>Revérifie la page avant d'y aller — c'est là que vivraient une annulation
+ou un changement de dernière minute.</p>
+{{end}}
+<p class="exports"><a href="/i/{{.I.Jeton}}.ics">ajouter à mon calendrier</a> ·
+<a href="/i/{{.I.Jeton}}">revenir à l'intention</a></p>
+{{template "pied" .}}
