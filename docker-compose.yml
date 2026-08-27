@@ -1,0 +1,13 @@
+# Perches — une instance = un conteneur + SQLite.
+# Pré-v0 : ce fichier deviendra fonctionnel avec la première version (`build: .`
+# suppose un Dockerfile qui n'existe pas encore).
+services:
+  perches:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      PERCHES_DB: /data/perches.db
+    restart: unless-stopped

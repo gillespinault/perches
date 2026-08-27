@@ -1,0 +1,9 @@
+# binaire
+/perches
+
+# données d'instance
+/data/
+*.db
+
+# secrets
+.env
