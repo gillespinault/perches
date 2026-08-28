@@ -10,12 +10,7 @@ import (
 // il reste quelque chose derrière.
 func slugDe(titre string) string {
 	t := strings.ToLower(strings.TrimSpace(titre))
-	for _, prefixe := range []string{"les perches de ", "les perches d'", "les perches d’", "perches de ", "perches d'", "perches d’", "la liste de ", "la liste d'", "la liste d’"} {
-		if strings.HasPrefix(t, prefixe) && strings.TrimSpace(t[len(prefixe):]) != "" {
-			t = t[len(prefixe):]
-			break
-		}
-	}
+	t = sansPrefixe(t)
 	var b strings.Builder
 	dernierTiret := true // évite un tiret en tête
 	for _, r := range t {
@@ -41,6 +36,22 @@ func slugDe(titre string) string {
 		s = "liste"
 	}
 	return s
+}
+
+// sansPrefixe retire « les perches de », « la liste d' », « perche de »… quand il reste
+// quelque chose derrière.
+func sansPrefixe(t string) string {
+	for _, article := range []string{"les ", "la ", "le ", ""} {
+		for _, nom := range []string{"perches", "perche", "liste"} {
+			for _, de := range []string{" de ", " d'", " d’"} {
+				p := article + nom + de
+				if strings.HasPrefix(t, p) && strings.TrimSpace(t[len(p):]) != "" {
+					return t[len(p):]
+				}
+			}
+		}
+	}
+	return t
 }
 
 // slugLibre ajoute -2, -3… tant que l'adresse est prise.

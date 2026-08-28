@@ -636,8 +636,8 @@ func TestDecision_LeNavigateurDeLHoteRetientSonAtelier(t *testing.T) {
 	req.AddCookie(cookies[0])
 	w := httptest.NewRecorder()
 	app.routes().ServeHTTP(w, req)
-	if !strings.Contains(w.Body.String(), "Les perches de Test") || !strings.Contains(w.Body.String(), "/e/edtest") {
-		t.Fatal("l'accueil mène à l'atelier retenu")
+	if w.Code != 303 || w.Header().Get("Location") != "/e/edtest" {
+		t.Fatalf("l'accueil mène droit à l'atelier retenu, reçu %d %s", w.Code, w.Header().Get("Location"))
 	}
 	if GET(app, "/").Header().Get("Set-Cookie") != "" || GET(app, "/l/test").Header().Get("Set-Cookie") != "" {
 		t.Fatal("hors de l'atelier, aucune page ne pose de cookie")
@@ -650,6 +650,8 @@ func TestDecision_LeNavigateurDeLHoteRetientSonAtelier(t *testing.T) {
 func TestDecision_AdresseDeriveeDuTitre(t *testing.T) {
 	cas := map[string]string{
 		"Les perches de Léa":     "lea",
+		"Les perche de Gilles":   "gilles",
+		"La liste d'Anna":        "anna",
 		"Les perches d'Émile":    "emile",
 		"Perches de Gilles":      "gilles",
 		"Ça, c'est l'été !":      "ca-c-est-l-ete",
@@ -702,6 +704,33 @@ func TestDecision_UnHoteOuvreLaPorteAUnAmi(t *testing.T) {
 	}
 	if rec := POST(app, "/e/inconnu/invitations", nil); rec.Code != 404 {
 		t.Fatalf("sans clé d'atelier valide, pas d'invitation, reçu %d", rec.Code)
+	}
+}
+
+func TestDecision_ReglagesTitreAdresseEmail(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	form := url.Values{"titre": {"Les perches de Test, corrigé"}, "slug": {"test-corrige"}, "email": {"test@exemple.be"}}
+	if rec := POST(app, "/e/edtest/reglages", form); rec.Code != 303 {
+		t.Fatalf("réglages : %d", rec.Code)
+	}
+	l, _ := app.listeParJetonEdition("edtest")
+	if l.Slug != "test-corrige" || l.Titre != "Les perches de Test, corrigé" || l.Email.String != "test@exemple.be" {
+		t.Fatalf("réglages non appliqués : %+v", l)
+	}
+	if rec := GET(app, "/l/test-corrige"); rec.Code != 200 {
+		t.Fatal("la page publique suit la nouvelle adresse")
+	}
+	app.db.Exec(`INSERT INTO listes (slug, jeton_edition, titre, lettre, etat) VALUES ('prise','x','P','','')`)
+	form.Set("slug", "prise")
+	if rec := POST(app, "/e/edtest/reglages", form); rec.Code != 409 {
+		t.Fatalf("adresse déjà prise → 409, reçu %d", rec.Code)
+	}
+	// la lettre s'enregistre sans toucher à l'e-mail
+	POST(app, "/e/edtest", url.Values{"lettre": {"Bonjour"}, "etat": {""}})
+	l, _ = app.listeParJetonEdition("edtest")
+	if l.Email.String != "test@exemple.be" || l.Lettre != "Bonjour" {
+		t.Fatal("enregistrer la lettre ne doit pas effacer l'e-mail")
 	}
 }
 

@@ -5,14 +5,7 @@ Si quelqu'un veut se joindre à moi, ça me fait plaisir. »</p>
 <p>Une liste d'intentions, sans obligation. Tes amis n'ont besoin de rien :
 un lien, un prénom, un geste. Pas de compte, pas de fil de discussion.</p>
 
-{{if .Atelier}}
-<section class="atelier-memo">
-<h2>Ton atelier</h2>
-<p><a href="/e/{{.Atelier.JetonEdition}}">{{.Atelier.Titre}} →</a></p>
-<form method="post" action="/oublier" class="enligne"><button class="discret">ce n'est pas toi ? oublier ce navigateur</button></form>
-</section>
-
-{{else if or (eq .Politique "ouverte") .Code}}
+{{if or (eq .Politique "ouverte") .Code}}
 <section>
 <h2>Ouvrir ta liste</h2>
 <p class="discret">Deux choses, une minute. Ta lettre et tes premières perches viennent juste après.</p>
@@ -20,7 +13,7 @@ un lien, un prénom, un geste. Pas de compte, pas de fil de discussion.</p>
 {{if .Code}}<input type="hidden" name="code" value="{{.Code}}">{{end}}
 <label>Le titre de ta liste
 <input name="titre" required maxlength="80" placeholder="Les perches de Camille"></label>
-<p class="discret">L'adresse de ta page en découle : « Les perches de Camille » donne <code>{{.BaseURL}}/l/camille</code>.</p>
+<p class="discret">L'adresse de ta page en découle : <code>{{.BaseURL}}/l/<span id="apercu-slug" data-base="{{.BaseURL}}">…</span></code></p>
 <label>Ton e-mail — c'est par lui que tu retrouves ton atelier
 <input name="email" type="email" required></label>
 <button>Ouvrir ma liste</button>
@@ -46,7 +39,7 @@ un lien, un prénom, un geste. Pas de compte, pas de fil de discussion.</p>
 <p>Cette instance n'accepte pas de nouvelles listes.</p>
 {{end}}
 
-{{if and (not .Atelier) (or (eq .Politique "ouverte") .Code)}}
+{{if or (eq .Politique "ouverte") .Code}}
 <details class="pied-page">
 <summary>Tu as déjà ta liste ?</summary>
 <form method="post" action="/recuperation">

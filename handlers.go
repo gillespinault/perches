@@ -5,9 +5,12 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 )
+
+var slugValide = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,40}$`)
 
 func (app *App) rendre(w http.ResponseWriter, nom string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -64,10 +67,11 @@ func (app *App) envoyer(dest, sujet, corps, typ string, reponseID, listeID int64
 // ---- accueil et création de liste ----
 
 func (app *App) accueil(w http.ResponseWriter, r *http.Request) {
-	var atelier *Liste
+	// Le navigateur connaît l'atelier : on y va, sans détour par la présentation.
 	if c, err := r.Cookie("atelier"); err == nil {
 		if l, err := app.listeParJetonEdition(c.Value); err == nil {
-			atelier = l
+			http.Redirect(w, r, "/e/"+l.JetonEdition, http.StatusSeeOther)
+			return
 		}
 	}
 	app.rendre(w, "accueil.html", map[string]any{
@@ -75,7 +79,6 @@ func (app *App) accueil(w http.ResponseWriter, r *http.Request) {
 		"Politique": app.politique,
 		"BaseURL":   app.baseURL,
 		"Code":      strings.TrimSpace(r.URL.Query().Get("code")),
-		"Atelier":   atelier,
 	})
 }
 
@@ -340,8 +343,20 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 			aVenir = append(aVenir, intentions[k])
 		}
 	}
+	var autres []Liste
+	if liste.Email.Valid {
+		if rows, err := app.db.Query(`SELECT `+colonnesListe+` FROM listes WHERE email = ? AND id <> ? ORDER BY cree_le`, liste.Email.String, liste.ID); err == nil {
+			for rows.Next() {
+				if l, err := scanListe(rows); err == nil {
+					autres = append(autres, *l)
+				}
+			}
+			rows.Close()
+		}
+	}
 	app.rendre(w, "edition.html", map[string]any{
-		"TitrePage":     liste.Titre + " — édition",
+		"TitrePage":     liste.Titre + " — atelier",
+		"Autres":        autres,
 		"Liste":         liste,
 		"AVenir":        aVenir,
 		"Passees":       passees,
@@ -379,10 +394,30 @@ func (app *App) majListe(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	app.db.Exec(`UPDATE listes SET lettre = ?, etat = ?, email = ? WHERE id = ?`,
-		r.FormValue("lettre"), strings.TrimSpace(r.FormValue("etat")),
-		nullSi(strings.TrimSpace(r.FormValue("email"))), liste.ID)
+	app.db.Exec(`UPDATE listes SET lettre = ?, etat = ? WHERE id = ?`,
+		r.FormValue("lettre"), strings.TrimSpace(r.FormValue("etat")), liste.ID)
 	http.Redirect(w, r, "/e/"+liste.JetonEdition, http.StatusSeeOther)
+}
+
+// reglages : titre, adresse, e-mail — ce qui change rarement, et se relit en pied d'atelier.
+func (app *App) reglages(w http.ResponseWriter, r *http.Request) {
+	liste, err := app.listeParJetonEdition(r.PathValue("jeton"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	titre := strings.TrimSpace(r.FormValue("titre"))
+	slug := strings.ToLower(strings.TrimSpace(r.FormValue("slug")))
+	email := strings.TrimSpace(r.FormValue("email"))
+	if titre == "" || len([]rune(titre)) > 80 || !slugValide.MatchString(slug) || !strings.Contains(email, "@") {
+		http.Error(w, "Il faut un titre, une adresse en minuscules (lettres, chiffres, tirets) et un e-mail.", http.StatusBadRequest)
+		return
+	}
+	if _, err := app.db.Exec(`UPDATE listes SET titre = ?, slug = ?, email = ? WHERE id = ?`, titre, slug, email, liste.ID); err != nil {
+		http.Error(w, "Cette adresse est déjà prise par une autre liste.", http.StatusConflict)
+		return
+	}
+	http.Redirect(w, r, "/e/"+liste.JetonEdition+"#reglages", http.StatusSeeOther)
 }
 
 func quandDepuisForm(r *http.Request) (string, error) {

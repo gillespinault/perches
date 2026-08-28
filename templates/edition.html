@@ -2,11 +2,8 @@
 {{if .Bienvenue}}
 <aside class="bienvenue">
 <h1>« {{.Liste.Titre}} » existe.</h1>
-<p>Cette page, c'est ton atelier. Son adresse est ta seule clé — il n'y a ni compte ni mot de passe.
-Mets-la en favori ou range-la quelque part :</p>
-<p class="copiable"><code id="lien-edition">{{.LienEdition}}</code><button type="button" class="discret" hidden data-copier="lien-edition">copier</button></p>
-{{if .Liste.Email.Valid}}<p class="discret">Elle vient aussi de partir par e-mail.</p>
-{{else}}<p class="discret">Sans e-mail, perdue elle est irrécupérable.</p>{{end}}
+<p>Ici, c'est ton atelier. Ce navigateur s'en souviendra ; ailleurs, ton e-mail te le renvoie.
+Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la pour toi.</p>
 </aside>
 {{else}}
 <h1>{{.Liste.Titre}} <span class="discret">· atelier</span></h1>
@@ -110,7 +107,24 @@ Mets-la en favori ou range-la quelque part :</p>
 <form method="post" action="/e/{{.Liste.JetonEdition}}/invitations"><button class="sobre">Créer un lien d'invitation</button></form>
 </details>
 
-<p class="exports"><a href="/e/{{.Liste.JetonEdition}}/export.json">tout exporter (JSON)</a></p>
+<details class="pied-page" id="reglages">
+<summary>Réglages — {{.Liste.Email.String}}</summary>
+<form method="post" action="/e/{{.Liste.JetonEdition}}/reglages">
+<label>Titre <input name="titre" required maxlength="80" value="{{.Liste.Titre}}"></label>
+<label>Adresse de ta page
+<span class="prefixe"><span>{{.BaseURL}}/l/</span><input name="slug" required pattern="[a-z0-9][a-z0-9-]+" value="{{.Liste.Slug}}" title="minuscules, chiffres, tirets"></span></label>
+<p class="discret">Si tu changes l'adresse, les liens déjà envoyés ne mèneront plus ici.</p>
+<label>E-mail — c'est par lui que tu retrouves ton atelier <input name="email" type="email" required value="{{.Liste.Email.String}}"></label>
+<button class="sobre">Enregistrer</button>
+</form>
+{{with .Autres}}
+<p class="discret">Tes autres listes :
+{{range .}}<a href="/e/{{.JetonEdition}}">{{.Titre}}</a> {{end}}</p>
+{{end}}
+</details>
+
+<p class="exports"><a href="/e/{{.Liste.JetonEdition}}/export.json">tout exporter (JSON)</a> ·
+<form method="post" action="/oublier" class="enligne"><button class="discret">quitter ce navigateur</button></form></p>
 {{template "pied" .}}
 
 {{define "statut"}}{{if eq . "jy_serai"}}j'y serai{{else if eq . "peut_etre"}}peut-être{{else}}j'aurais bien aimé{{end}}{{end}}
@@ -123,8 +137,6 @@ Mets-la en favori ou range-la quelque part :</p>
 <textarea name="lettre" rows="8" placeholder="Bonjour,&#10;voici les envies du moment…">{{.Liste.Lettre}}</textarea>
 <label>En ce moment — une ligne sous le titre, optionnelle
 <input name="etat" value="{{.Liste.Etat}}" placeholder="plutôt disponible ces temps-ci"></label>
-<label>E-mail de secours — uniquement pour te renvoyer ta clé
-<input name="email" type="email" value="{{.Liste.Email.String}}"></label>
 <button>Enregistrer</button>
 </form>
 </section>

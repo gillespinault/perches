@@ -30,6 +30,20 @@ document.querySelectorAll("[data-copier]").forEach(function (b) {
       .then(function () { b.textContent = "copié"; });
   });
 });
+// Aperçu vivant de l'adresse à l'ouverture d'une liste — miroir de slugDe côté serveur, qui reste l'autorité.
+(function () {
+  var apercu = document.getElementById("apercu-slug");
+  var titre = document.querySelector('form[action="/listes"] input[name=titre]');
+  if (!apercu || !titre) return;
+  function slug(t) {
+    t = t.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/œ/g, "o").replace(/æ/g, "a");
+    t = t.replace(/^(les |la |le )?(perches?|liste) (de |d['’])/, "");
+    t = t.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
+    return t || "liste";
+  }
+  function maj() { apercu.textContent = titre.value.trim() ? slug(titre.value) : "…"; }
+  titre.addEventListener("input", maj); maj();
+})();
 </script>
 </body>
 </html>
