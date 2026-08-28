@@ -543,9 +543,28 @@ func (app *App) majIntention(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Il faut une date valide.", http.StatusBadRequest)
 		return
 	}
+	titre := strings.TrimSpace(r.FormValue("titre"))
+	if titre == "" {
+		http.Error(w, "Il faut un titre.", http.StatusBadRequest)
+		return
+	}
 	lieu := strings.TrimSpace(r.FormValue("lieu"))
+	visibilite := "page"
+	if r.FormValue("visibilite") == "lien" {
+		visibilite = "lien"
+	}
+	var capacite any
+	if c, err := strconv.Atoi(r.FormValue("capacite")); err == nil && c > 0 {
+		capacite = c
+	}
+	jyVais := r.FormValue("jy_vais") != "0"
+	// Tout se corrige ; seuls la date et le lieu — la logistique — valent un mot aux invités.
 	change := quand != intention.Quand.String || lieu != intention.Lieu
-	app.db.Exec(`UPDATE intentions SET quand = ?, lieu = ? WHERE id = ?`, quand, lieu, intention.ID)
+	app.db.Exec(`UPDATE intentions SET titre = ?, description = ?, quand = ?, lieu = ?, url_externe = ?,
+		capacite = ?, visibilite = ?, jy_vais_de_toute_facon = ? WHERE id = ?`,
+		titre, r.FormValue("description"), quand, lieu, nullSi(strings.TrimSpace(r.FormValue("url_externe"))),
+		capacite, visibilite, jyVais, intention.ID)
+	intention.Titre = titre
 	if change && !intention.AnnuleeLe.Valid {
 		var q = quand
 		msg := fmt.Sprintf("L'intention « %s » a changé : %s", intention.Titre,

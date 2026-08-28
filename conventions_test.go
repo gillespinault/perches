@@ -734,6 +734,30 @@ func TestDecision_ReglagesTitreAdresseEmail(t *testing.T) {
 	}
 }
 
+func TestDecision_UnePercheSeCorrigeEntierement(t *testing.T) {
+	app, m := appTest(t)
+	listeTest(t, app)
+	i := intentionTest(t, app, dans(5), "KIKK, Namurr", "page", nil)
+	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "", "anna@exemple.be")
+	form := url.Values{"titre": {"KIKK, Namur"}, "date": {i.Quand.String[:10]}, "heure": {""},
+		"lieu": {i.Lieu}, "description": {"journée du vendredi"}, "capacite": {"4"}, "visibilite": {"lien"}, "jy_vais": {"0"}}
+	if rec := POST(app, fmt.Sprintf("/e/edtest/intentions/%d/maj", i.ID), form); rec.Code != 303 {
+		t.Fatalf("maj : %d", rec.Code)
+	}
+	j, _, _ := app.intentionParJeton(i.Jeton)
+	if j.Titre != "KIKK, Namur" || j.Description != "journée du vendredi" || j.Capacite.Int64 != 4 || j.Visibilite != "lien" || j.JyVais {
+		t.Fatalf("correction non appliquée : %+v", j)
+	}
+	if len(m.Envois) != 0 {
+		t.Fatal("corriger une faute de frappe n'est pas de la logistique : personne n'est prévenu")
+	}
+	form.Set("lieu", "Namur, gare")
+	POST(app, fmt.Sprintf("/e/edtest/intentions/%d/maj", i.ID), form)
+	if len(m.Envois) != 1 {
+		t.Fatalf("changer le lieu prévient ceux qui ont un e-mail, envois : %d", len(m.Envois))
+	}
+}
+
 // ---- hors périmètre : le test d'absence ----
 
 func TestHorsPerimetre_LeSchemaResteMaigre(t *testing.T) {

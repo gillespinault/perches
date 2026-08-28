@@ -33,12 +33,25 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 {{end}}
 </ul>
 <details>
-<summary>Changer la date ou le lieu, annuler</summary>
+<summary>Modifier, annuler</summary>
 <form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/maj">
-<label>Date <input type="date" name="date" value="{{datede .Quand}}" required></label>
-<label>Heure <input type="time" name="heure" value="{{heurede .Quand}}"></label>
-<label>Lieu <input name="lieu" value="{{.Lieu}}"></label>
-<button>Enregistrer <span class="discret">— ceux qui ont laissé un e-mail seront prévenus</span></button>
+<label>Quoi <input name="titre" required value="{{.Titre}}"></label>
+<label>Quand <span class="enligne-champs"><input type="date" name="date" value="{{datede .Quand}}" required> <input type="time" name="heure" value="{{heurede .Quand}}"></span></label>
+<label>Où <input name="lieu" value="{{.Lieu}}"></label>
+<label>Quelques mots <textarea name="description" rows="3">{{.Description}}</textarea></label>
+<label>Lien externe <input name="url_externe" type="url" value="{{.URLExterne.String}}"></label>
+<label>Capacité indicative <input name="capacite" type="number" min="1" value="{{if .Capacite.Valid}}{{.Capacite.Int64}}{{end}}"></label>
+<label>Visibilité
+<select name="visibilite">
+<option value="page"{{if eq .Visibilite "page"}} selected{{end}}>sur ma page</option>
+<option value="lien"{{if eq .Visibilite "lien"}} selected{{end}}>par lien seulement</option>
+</select></label>
+<label>J'y vais…
+<select name="jy_vais">
+<option value="1"{{if .JyVais}} selected{{end}}>de toute façon</option>
+<option value="0"{{if not .JyVais}} selected{{end}}>à confirmer</option>
+</select></label>
+<button>Enregistrer <span class="discret">— si la date ou le lieu change, ceux qui ont laissé un e-mail sont prévenus</span></button>
 </form>
 <form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/annuler">
 <button class="sobre">Annuler cette perche <span class="discret">— idem</span></button>
@@ -131,8 +144,8 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 
 {{define "section-lettre"}}
 <section id="lettre">
-<h2>Ta lettre</h2>
-<p class="discret">Elle ouvre ta page publique, juste sous le titre, telle quelle — sauts de ligne compris.</p>
+<h2>Ton introduction</h2>
+<p class="discret">Elle ouvre ta page, juste sous le titre, telle quelle — sauts de ligne compris.</p>
 <form method="post" action="/e/{{.Liste.JetonEdition}}">
 <textarea name="lettre" rows="8" placeholder="Bonjour,&#10;voici les envies du moment…">{{.Liste.Lettre}}</textarea>
 <label>En ce moment — une ligne sous le titre, optionnelle
