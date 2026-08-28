@@ -103,7 +103,7 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 <label>Quand — l'heure est optionnelle <span class="enligne-champs"><input type="date" name="date" value="{{datede .Quand}}" required> <input type="time" name="heure" value="{{heurede .Quand}}"></span></label>
 <label>Jusqu'au — si ça dure plusieurs jours <input type="date" name="fin" value="{{.Fin.String}}"></label>
 <label>Où <input name="lieu" value="{{.Lieu}}"></label>
-<label>Quelques mots <textarea name="description" rows="3">{{.Description}}</textarea></label>
+<label>Quelques mots — la première ligne s'affiche sous le titre, même carte repliée <textarea name="description" rows="3">{{.Description}}</textarea></label>
 <details>
 <summary>Plus d'options</summary>
 <label>Lien externe <input name="url_externe" type="url" value="{{.URLExterne.String}}"></label>
@@ -129,7 +129,7 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 <label>Quand — l'heure est optionnelle <span class="enligne-champs"><input type="date" name="date" required> <input type="time" name="heure"></span></label>
 <label>Jusqu'au — si ça dure plusieurs jours <input type="date" name="fin"></label>
 <label>Où <input name="lieu"></label>
-<label>Quelques mots <textarea name="description" rows="3" placeholder="Le contexte, ce qu'il faut savoir, pourquoi ça t'a l'air intéressant."></textarea></label>
+<label>Quelques mots — la première ligne s'affiche sous le titre, même carte repliée <textarea name="description" rows="3" placeholder="Pourquoi ça t'a l'air intéressant — et où tu en es, si tu veux : « J'irai bien, pas encore planifié. »"></textarea></label>
 <details>
 <summary>Plus d'options</summary>
 <label>Lien externe (l'expo, le festival…) <input name="url_externe" type="url"></label>
