@@ -100,6 +100,16 @@ Mets-la en favori ou range-la quelque part :</p>
 </details>
 {{end}}
 
+<details class="pied-page" id="inviter"{{if .Invitation}} open{{end}}>
+<summary>Un ami veut sa propre liste ?</summary>
+<p class="discret">Rien à voir avec partager tes perches (pour ça, les liens plus haut) : ceci ouvre la porte à quelqu'un d'autre, pour une liste à lui.</p>
+{{if .Invitation}}
+<p>À lui envoyer — ce lien vaut pour une seule liste :</p>
+<p class="copiable"><code id="lien-invitation">{{.BaseURL}}/?code={{.Invitation}}</code><button type="button" class="discret" hidden data-copier="lien-invitation">copier</button></p>
+{{end}}
+<form method="post" action="/e/{{.Liste.JetonEdition}}/invitations"><button class="sobre">Créer un lien d'invitation</button></form>
+</details>
+
 <p class="exports"><a href="/e/{{.Liste.JetonEdition}}/export.json">tout exporter (JSON)</a></p>
 {{template "pied" .}}
 

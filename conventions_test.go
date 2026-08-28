@@ -523,7 +523,7 @@ func TestDecision_IntentionOuverteExigeEcheance(t *testing.T) {
 func TestDecision_CodeInvitationRequis(t *testing.T) {
 	app, _ := appTest(t)
 	app.politique = "invitation"
-	form := url.Values{"titre": {"Les perches d'Anna"}, "slug": {"anna"}}
+	form := url.Values{"titre": {"Les perches d'Anna"}, "email": {"anna@exemple.be"}}
 	if rec := POST(app, "/listes", form); rec.Code != 403 {
 		t.Fatalf("sans code, la création doit être refusée, reçu %d", rec.Code)
 	}
@@ -532,25 +532,28 @@ func TestDecision_CodeInvitationRequis(t *testing.T) {
 	if rec := POST(app, "/listes", form); rec.Code != 303 {
 		t.Fatalf("avec un code valide, la création doit passer, reçu %d", rec.Code)
 	}
-	form2 := url.Values{"titre": {"Encore"}, "slug": {"encore"}, "code": {"sesame"}}
+	form2 := url.Values{"titre": {"Encore"}, "code": {"sesame"}, "email": {"anna@exemple.be"}}
 	if rec := POST(app, "/listes", form2); rec.Code != 403 {
 		t.Fatalf("un code déjà utilisé doit être refusé, reçu %d", rec.Code)
 	}
 }
 
-func TestDecision_InvitationInvisiblePourLesInvites(t *testing.T) {
+func TestDecision_AccueilSelonDOuOnArrive(t *testing.T) {
 	app, _ := appTest(t)
 	app.politique = "invitation"
 	accueil := GET(app, "/").Body.String()
-	if strings.Contains(accueil, `name="titre"`) || strings.Contains(accueil, "invitation") {
-		t.Fatal("sans code, l'accueil ne parle ni de création ni d'invitation : un ami qui y tombe n'a rien à faire")
+	if strings.Contains(accueil, `name="titre"`) {
+		t.Fatal("sans code, pas de formulaire d'ouverture")
+	}
+	if !strings.Contains(accueil, `action="/recuperation"`) || !strings.Contains(accueil, "sur invitation") {
+		t.Fatal("sans code : retrouver son atelier par e-mail, et savoir que l'ouverture est sur invitation")
 	}
 	app.db.Exec(`INSERT INTO codes_invitation (code) VALUES ('sesame')`)
 	avecCode := GET(app, "/?code=sesame").Body.String()
 	if !strings.Contains(avecCode, `name="titre"`) || !strings.Contains(avecCode, `value="sesame"`) {
 		t.Fatal("le lien d'invitation ouvre le formulaire, code prérempli")
 	}
-	form := url.Values{"titre": {"Les perches de Léa"}, "slug": {"lea"}, "code": {"sesame"}}
+	form := url.Values{"titre": {"Les perches de Léa"}, "code": {"sesame"}, "email": {"lea@exemple.be"}}
 	rec := POST(app, "/listes", form)
 	loc := rec.Header().Get("Location")
 	if rec.Code != 303 || !strings.HasPrefix(loc, "/e/") {
@@ -663,7 +666,7 @@ func TestDecision_AdresseDeriveeDuTitre(t *testing.T) {
 	app, _ := appTest(t)
 	app.politique = "ouverte"
 	for _, attendu := range []string{"/e/", "/e/", "/e/"} {
-		rec := POST(app, "/listes", url.Values{"titre": {"Les perches d'Anna"}})
+		rec := POST(app, "/listes", url.Values{"titre": {"Les perches d'Anna"}, "email": {"anna@exemple.be"}})
 		if rec.Code != 303 || !strings.HasPrefix(rec.Header().Get("Location"), attendu) {
 			t.Fatalf("création : %d %s", rec.Code, rec.Header().Get("Location"))
 		}
@@ -678,6 +681,27 @@ func TestDecision_AdresseDeriveeDuTitre(t *testing.T) {
 	rows.Close()
 	if strings.Join(slugs, " ") != "anna anna-2 anna-3" {
 		t.Fatalf("dédoublonnage attendu anna anna-2 anna-3, trouvé %v", slugs)
+	}
+}
+
+func TestDecision_UnHoteOuvreLaPorteAUnAmi(t *testing.T) {
+	app, _ := appTest(t)
+	app.politique = "invitation"
+	listeTest(t, app)
+	rec := POST(app, "/e/edtest/invitations", nil)
+	loc := rec.Header().Get("Location")
+	code := strings.TrimSuffix(strings.TrimPrefix(loc, "/e/edtest?invitation="), "#inviter")
+	if rec.Code != 303 || len(code) != 8 {
+		t.Fatalf("redirection inattendue : %d %q", rec.Code, loc)
+	}
+	if !strings.Contains(GET(app, loc).Body.String(), "/?code="+code) {
+		t.Fatal("l'atelier montre le lien d'invitation à envoyer")
+	}
+	if !strings.Contains(GET(app, "/?code="+code).Body.String(), `name="titre"`) {
+		t.Fatal("le lien d'invitation ouvre le formulaire")
+	}
+	if rec := POST(app, "/e/inconnu/invitations", nil); rec.Code != 404 {
+		t.Fatalf("sans clé d'atelier valide, pas d'invitation, reçu %d", rec.Code)
 	}
 }
 

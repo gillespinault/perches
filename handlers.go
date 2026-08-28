@@ -106,6 +106,11 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Il faut un titre (80 caractères au plus).", http.StatusBadRequest)
 		return
 	}
+	email := strings.TrimSpace(r.FormValue("email"))
+	if !strings.Contains(email, "@") {
+		http.Error(w, "Il faut un e-mail : c'est par lui que tu retrouves ton atelier.", http.StatusBadRequest)
+		return
+	}
 	slug := app.slugLibre(slugDe(titre))
 	var codeUtilise string
 	if app.politique == "invitation" {
@@ -119,7 +124,6 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 		codeUtilise = code
 	}
 	je := jeton(16)
-	email := strings.TrimSpace(r.FormValue("email"))
 	res, err := app.db.Exec(`INSERT INTO listes (slug, jeton_edition, titre, lettre, etat, email)
 		VALUES (?,?,?,?,?,?)`,
 		slug, je, titre, "", "", nullSi(email))
@@ -133,9 +137,9 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 			listeID, codeUtilise)
 	}
 	if email != "" {
-		corps := fmt.Sprintf("Ta liste « %s » est créée.\n\nLien public, à partager : %s/l/%s\nLien secret d'édition, à garder : %s/e/%s\n",
+		corps := fmt.Sprintf("Ta liste « %s » est ouverte.\n\nTa page, à partager : %s/l/%s\nTon atelier (ta clé — garde ce lien pour toi) : %s/e/%s\n",
 			titre, app.baseURL, slug, app.baseURL, je)
-		app.envoyer(email, "Perches — ton lien d'édition", corps, "recuperation_lien", 0, listeID)
+		app.envoyer(email, "Perches — ton atelier", corps, "recuperation_lien", 0, listeID)
 	}
 	http.Redirect(w, r, "/e/"+je+"?bienvenue=1", http.StatusSeeOther)
 }
@@ -151,16 +155,16 @@ func (app *App) recupererLien(w http.ResponseWriter, r *http.Request) {
 			defer rows.Close()
 			for rows.Next() {
 				if l, err := scanListe(rows); err == nil {
-					corps := fmt.Sprintf("Ta liste « %s » :\n\nLien public : %s/l/%s\nLien secret d'édition : %s/e/%s\n",
+					corps := fmt.Sprintf("Ta liste « %s » :\n\nTa page, à partager : %s/l/%s\nTon atelier (ta clé — garde ce lien pour toi) : %s/e/%s\n",
 						l.Titre, app.baseURL, l.Slug, app.baseURL, l.JetonEdition)
-					app.envoyer(email, "Perches — tes liens", corps, "recuperation_lien", 0, l.ID)
+					app.envoyer(email, "Perches — ton atelier", corps, "recuperation_lien", 0, l.ID)
 				}
 			}
 		}
 	}
 	app.rendre(w, "message.html", map[string]any{
 		"TitrePage": "Perches",
-		"Message":   "Si cette adresse est connue ici, un courriel vient de partir avec les liens.",
+		"Message":   "Si cette adresse est connue ici, le lien de ton atelier vient de partir par e-mail.",
 	})
 }
 
@@ -346,7 +350,27 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 		"LienPublic":    app.baseURL + "/l/" + liste.Slug,
 		"LienEdition":   app.baseURL + "/e/" + liste.JetonEdition,
 		"Bienvenue":     r.URL.Query().Has("bienvenue"),
+		"Invitation":    r.URL.Query().Get("invitation"),
 	})
+}
+
+// creerInvitation : un hôte ouvre la porte à un ami — un lien à usage unique vers le
+// formulaire d'ouverture. Redirection après POST : recharger ne crée pas de doublon.
+func (app *App) creerInvitation(w http.ResponseWriter, r *http.Request) {
+	if app.tropVite(w, r) {
+		return
+	}
+	liste, err := app.listeParJetonEdition(r.PathValue("jeton"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	code := jeton(4)
+	if _, err := app.db.Exec(`INSERT INTO codes_invitation (code) VALUES (?)`, code); err != nil {
+		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?invitation="+code+"#inviter", http.StatusSeeOther)
 }
 
 func (app *App) majListe(w http.ResponseWriter, r *http.Request) {

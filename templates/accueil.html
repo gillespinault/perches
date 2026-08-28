@@ -5,14 +5,14 @@ Si quelqu'un veut se joindre à moi, ça me fait plaisir. »</p>
 <p>Une liste d'intentions, sans obligation. Tes amis n'ont besoin de rien :
 un lien, un prénom, un geste. Pas de compte, pas de fil de discussion.</p>
 
-{{with .Atelier}}
+{{if .Atelier}}
 <section class="atelier-memo">
 <h2>Ton atelier</h2>
-<p><a href="/e/{{.JetonEdition}}">{{.Titre}} →</a></p>
+<p><a href="/e/{{.Atelier.JetonEdition}}">{{.Atelier.Titre}} →</a></p>
 <form method="post" action="/oublier" class="enligne"><button class="discret">ce n'est pas toi ? oublier ce navigateur</button></form>
 </section>
-{{end}}
-{{if or (eq .Politique "ouverte") .Code}}
+
+{{else if or (eq .Politique "ouverte") .Code}}
 <section>
 <h2>Ouvrir ta liste</h2>
 <p class="discret">Deux choses, une minute. Ta lettre et tes premières perches viennent juste après.</p>
@@ -21,24 +21,39 @@ un lien, un prénom, un geste. Pas de compte, pas de fil de discussion.</p>
 <label>Le titre de ta liste
 <input name="titre" required maxlength="80" placeholder="Les perches de Camille"></label>
 <p class="discret">L'adresse de ta page en découle : « Les perches de Camille » donne <code>{{.BaseURL}}/l/camille</code>.</p>
-<label>Ton e-mail (optionnel) — uniquement pour te renvoyer ta clé d'édition si tu la perds
-<input name="email" type="email"></label>
+<label>Ton e-mail — c'est par lui que tu retrouves ton atelier
+<input name="email" type="email" required></label>
 <button>Ouvrir ma liste</button>
 </form>
 </section>
+
 {{else if eq .Politique "invitation"}}
-{{if not .Atelier}}<p>Si on t'a envoyé le lien d'une page ou d'une perche, tout se passe là-bas —
-il n'y a rien à faire ici.</p>{{end}}
+<section>
+<h2>Tu as déjà ta liste ?</h2>
+<form method="post" action="/recuperation">
+<label>Ton e-mail — on t'envoie le lien de ton atelier
+<input name="email" type="email" required></label>
+<button>Retrouver mon atelier</button>
+</form>
+</section>
+<section>
+<h2>Pas encore ?</h2>
+<p>Perches s'ouvre sur invitation : quelqu'un qui a déjà sa liste peut t'envoyer un lien pour ouvrir la tienne.</p>
+<p class="discret">Et si on t'a envoyé le lien d'une page ou d'une perche, tout se passe là-bas — il n'y a rien à faire ici.</p>
+</section>
+
 {{else}}
 <p>Cette instance n'accepte pas de nouvelles listes.</p>
 {{end}}
 
+{{if and (not .Atelier) (or (eq .Politique "ouverte") .Code)}}
 <details class="pied-page">
-<summary>Clé d'édition égarée ?</summary>
+<summary>Tu as déjà ta liste ?</summary>
 <form method="post" action="/recuperation">
-<label>L'e-mail donné à l'ouverture de ta liste
+<label>Ton e-mail — on t'envoie le lien de ton atelier
 <input name="email" type="email" required></label>
-<button class="sobre">Me renvoyer mes liens</button>
+<button class="sobre">Retrouver mon atelier</button>
 </form>
 </details>
+{{end}}
 {{template "pied" .}}

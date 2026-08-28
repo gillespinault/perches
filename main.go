@@ -82,6 +82,7 @@ func (app *App) routes() http.Handler {
 	mux.HandleFunc("POST /e/{jeton}/intentions/{id}/maj", app.majIntention)
 	mux.HandleFunc("POST /e/{jeton}/reponses/{id}/effacer", app.effacerReponse)
 	mux.HandleFunc("GET /e/{jeton}/export.json", app.exportComplet)
+	mux.HandleFunc("POST /e/{jeton}/invitations", app.creerInvitation)
 	mux.Handle("GET /static/", http.FileServerFS(staticFS))
 	return mux
 }
