@@ -15,13 +15,12 @@ un lien, un prénom, un geste. Pas de compte, pas de fil de discussion.</p>
 {{if or (eq .Politique "ouverte") .Code}}
 <section>
 <h2>Ouvrir ta liste</h2>
-<p class="discret">Trois choses, une minute. Ta lettre et tes premières perches viennent juste après.</p>
+<p class="discret">Deux choses, une minute. Ta lettre et tes premières perches viennent juste après.</p>
 <form method="post" action="/listes">
 {{if .Code}}<input type="hidden" name="code" value="{{.Code}}">{{end}}
 <label>Le titre de ta liste
-<input name="titre" required placeholder="Les perches de Camille"></label>
-<label>L'adresse de ta page — celle que tu partageras
-<span class="prefixe"><span>{{.BaseURL}}/l/</span><input name="slug" required pattern="[a-z0-9][a-z0-9-]+" placeholder="camille" title="minuscules, chiffres, tirets"></span></label>
+<input name="titre" required maxlength="80" placeholder="Les perches de Camille"></label>
+<p class="discret">L'adresse de ta page en découle : « Les perches de Camille » donne <code>{{.BaseURL}}/l/camille</code>.</p>
 <label>Ton e-mail (optionnel) — uniquement pour te renvoyer ta clé d'édition si tu la perds
 <input name="email" type="email"></label>
 <button>Ouvrir ma liste</button>

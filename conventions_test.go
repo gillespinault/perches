@@ -644,6 +644,43 @@ func TestDecision_LeNavigateurDeLHoteRetientSonAtelier(t *testing.T) {
 	}
 }
 
+func TestDecision_AdresseDeriveeDuTitre(t *testing.T) {
+	cas := map[string]string{
+		"Les perches de Léa":     "lea",
+		"Les perches d'Émile":    "emile",
+		"Perches de Gilles":      "gilles",
+		"Ça, c'est l'été !":      "ca-c-est-l-ete",
+		"   ":                    "liste",
+		"Les perches de ":        "les-perches-de",
+		"Œuvres & cætera — 2026": "ouvres-catera-2026",
+		strings.Repeat("a", 60):  strings.Repeat("a", 40),
+	}
+	for titre, attendu := range cas {
+		if got := slugDe(titre); got != attendu {
+			t.Errorf("slugDe(%q) = %q, attendu %q", titre, got, attendu)
+		}
+	}
+	app, _ := appTest(t)
+	app.politique = "ouverte"
+	for _, attendu := range []string{"/e/", "/e/", "/e/"} {
+		rec := POST(app, "/listes", url.Values{"titre": {"Les perches d'Anna"}})
+		if rec.Code != 303 || !strings.HasPrefix(rec.Header().Get("Location"), attendu) {
+			t.Fatalf("création : %d %s", rec.Code, rec.Header().Get("Location"))
+		}
+	}
+	var slugs []string
+	rows, _ := app.db.Query(`SELECT slug FROM listes ORDER BY id`)
+	for rows.Next() {
+		var s string
+		rows.Scan(&s)
+		slugs = append(slugs, s)
+	}
+	rows.Close()
+	if strings.Join(slugs, " ") != "anna anna-2 anna-3" {
+		t.Fatalf("dédoublonnage attendu anna anna-2 anna-3, trouvé %v", slugs)
+	}
+}
+
 // ---- hors périmètre : le test d'absence ----
 
 func TestHorsPerimetre_LeSchemaResteMaigre(t *testing.T) {

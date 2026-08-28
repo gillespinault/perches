@@ -5,12 +5,10 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 )
 
-var slugValide = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,40}$`)
 
 func (app *App) rendre(w http.ResponseWriter, nom string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -105,11 +103,11 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	titre := strings.TrimSpace(r.FormValue("titre"))
-	slug := strings.ToLower(strings.TrimSpace(r.FormValue("slug")))
-	if titre == "" || !slugValide.MatchString(slug) {
-		http.Error(w, "Il faut un titre, et une adresse en minuscules (lettres, chiffres, tirets).", http.StatusBadRequest)
+	if titre == "" || len([]rune(titre)) > 80 {
+		http.Error(w, "Il faut un titre (80 caractères au plus).", http.StatusBadRequest)
 		return
 	}
+	slug := app.slugLibre(slugDe(titre))
 	var codeUtilise string
 	if app.politique == "invitation" {
 		code := strings.TrimSpace(r.FormValue("code"))
@@ -127,7 +125,7 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 		VALUES (?,?,?,?,?,?)`,
 		slug, je, titre, "", "", nullSi(email))
 	if err != nil {
-		http.Error(w, "Cette adresse est déjà prise.", http.StatusConflict)
+		http.Error(w, "erreur interne", http.StatusInternalServerError)
 		return
 	}
 	listeID, _ := res.LastInsertId()
