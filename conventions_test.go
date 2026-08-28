@@ -5,7 +5,9 @@ package main
 // est une PR qui demande à changer le produit.
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
@@ -39,7 +41,7 @@ func appTest(t *testing.T) (*App, *MailerTest) {
 	return &App{
 		db: db, mailer: m, tpl: chargerTemplates(),
 		politique: "ouverte", baseURL: "http://perches.test", limiteur: nouveauLimiteur(),
-		synchrone: true, csp: cspDepuisLayout(),
+		synchrone: true, csp: cspPour(chargerTemplates()),
 	}, m
 }
 
@@ -920,8 +922,16 @@ func TestSecurite_EnTetes(t *testing.T) {
 	if h.Get("X-Content-Type-Options") != "nosniff" || h.Get("X-Frame-Options") != "DENY" || h.Get("Referrer-Policy") != "same-origin" {
 		t.Fatal("en-têtes de sécurité absents")
 	}
-	if csp := h.Get("Content-Security-Policy"); !strings.Contains(csp, "'sha256-") || strings.Contains(csp, "unsafe") {
+	csp := h.Get("Content-Security-Policy")
+	if !strings.Contains(csp, "'sha256-") || strings.Contains(csp, "unsafe") {
 		t.Fatalf("la CSP autorise le script par empreinte, rien d'autre : %q", csp)
+	}
+	// l'empreinte doit être celle du script réellement servi (html/template réécrit le JS)
+	page := GET(app, "/l/test").Body.String()
+	script := page[strings.Index(page, "<script>")+len("<script>") : strings.Index(page, "</script>")]
+	somme := sha256.Sum256([]byte(script))
+	if !strings.Contains(csp, "'sha256-"+base64.StdEncoding.EncodeToString(somme[:])+"'") {
+		t.Fatal("l'empreinte de la CSP ne correspond pas au script servi : le bouton « copier » serait bloqué")
 	}
 	req := httptest.NewRequest("POST", "/oublier", nil)
 	req.Header.Set("Sec-Fetch-Site", "cross-site")

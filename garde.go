@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"html/template"
 	"net"
 	"net/http"
 	"strings"
@@ -37,11 +39,15 @@ func (app *App) protege(suivant http.Handler) http.Handler {
 	})
 }
 
-// cspDepuisLayout : la seule touche de script est dans layout.html, statique ; on l'autorise
-// par son empreinte, rien d'autre.
-func cspDepuisLayout() string {
-	src, _ := tplFS.ReadFile("templates/layout.html")
-	s := string(src)
+// cspPour : la seule touche de script est dans le pied de page (layout.html), statique ; on
+// l'autorise par son empreinte, rien d'autre. L'empreinte se calcule sur le script RENDU —
+// html/template réécrit le JavaScript à l'exécution, le source brut ne correspondrait pas.
+func cspPour(tpl *template.Template) string {
+	var buf bytes.Buffer
+	if err := tpl.ExecuteTemplate(&buf, "pied", nil); err != nil {
+		panic("rendu du pied de page pour la CSP : " + err.Error())
+	}
+	s := buf.String()
 	scripts := ""
 	for {
 		i := strings.Index(s, "<script>")

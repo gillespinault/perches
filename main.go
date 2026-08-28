@@ -65,8 +65,8 @@ func main() {
 		baseURL:       env("PERCHES_BASE_URL", "http://localhost:8080"),
 		limiteur:      nouveauLimiteur(),
 		derriereProxy: os.Getenv("PERCHES_DERRIERE_PROXY") != "",
-		csp:           cspDepuisLayout(),
 	}
+	app.csp = cspPour(app.tpl)
 
 	go app.boucleRappels()
 
