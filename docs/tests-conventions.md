@@ -29,7 +29,8 @@ Convention de nommage Go : `TestConvNN_NomParlant`.
 
 - `TestConv02_AucunBoutonNon` [H] — le HTML d'une intention ne contient aucun
   contrôle de refus : les seules valeurs de formulaire pour `statut` sont
-  `jy_serai` et `peut_etre`.
+  `jy_serai`, `peut_etre` et `jaurais_aime` (« ah zut, j'aurais bien aimé » — l'envie,
+  pas l'absence ; décision du 28 août 2026).
 - `TestConv02_PostNonRejete` [H] — `POST` avec `statut=non` → 400.
 - `TestConv02_SchemaRefuseLeNon` [S] — `INSERT … statut='non'` → violation de
   CHECK (vérifié le 2026-08-27 sur le schéma).
@@ -50,7 +51,8 @@ Convention de nommage Go : `TestConvNN_NomParlant`.
 ## C4 — Capacité indicative, jamais bloquante
 
 - `TestConv04_CapaciteAffichee` [H] — si une capacité est définie, la page la
-  montre (« X places · Y réponses »).
+  montre (« Capacité indicative : N » seule, ou « … — 2 sur 4 places environ » avec les
+  présences).
 - Le versant « jamais bloquante » est couvert par
   `TestConv02_CapacitePleineNeBloquePas`.
 
@@ -59,9 +61,10 @@ Convention de nommage Go : `TestConvNN_NomParlant`.
 - `TestConv05_DefautSchemaEtAffichage` [S+H] — une intention créée sans préciser a
   `jy_vais_de_toute_facon = 1`, et la page l'affiche.
 
-## C6 — L'état de l'hôte est visible
+## C6 — La voix de l'hôte est visible (ex-« état » ; décision du 28 août 2026)
 
-- `TestConv06_EtatSurLaPagePublique` [H] — l'état de la liste apparaît sur la page
+- `TestConv06_LaVoixDeLHoteSurChaquePage` [H] — l'introduction apparaît sur la page de la
+  liste et sur chaque perche ; aucun champ « état » n'est affiché
   publique et sur chaque page d'intention.
 
 ## C7 — Aucune notification poussée vers l'hôte
@@ -118,7 +121,7 @@ Convention de nommage Go : `TestConvNN_NomParlant`.
 - `TestDecision_SansEmailLaPageLeDit` [H] — la confirmation d'une réponse sans
   e-mail contient la mention « revérifie la page avant d'y aller ».
 - `TestDecision_ExportsToujoursDisponibles` [H] — `/l/{slug}.ics`,
-  `/l/{slug}.json` et l'export HTML statique répondent 200 à tout moment.
+  `/l/{slug}.json` et l'export complet de l'atelier répondent 200 à tout moment.
 - `TestDecision_IntentionOuverteExigeEcheance` [S] — `quand` NULL sans
   `echeance_decision` → violation de CHECK (vérifié le 2026-08-27).
 - `TestDecision_CodeInvitationRequis` [H] — instance en mode code d'invitation :
@@ -130,3 +133,9 @@ Un petit test d'introspection, `TestHorsPerimetre_LeSchemaResteMaigre`, verrouil
 la liste exacte des tables. Ajouter une table (`commentaires`, `abonnements`,
 `notifications`, `users`…) casse ce test : la discussion sur le périmètre a lieu
 face à un test rouge, pas dans un fil d'issue.
+
+## Après la revue du 28 août 2026
+
+Les tests `TestSecurite_*` (lot robustesse) et `TestDecision_*` (décisions produit et
+revue UX) ne correspondent pas à une convention du README mais à une ligne de
+DECISIONS.md ; leur nom dit la décision. `go test -v` en est la table des matières.

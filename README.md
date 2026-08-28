@@ -7,14 +7,18 @@ Perches permet de dire cela à peu de frais et sans créer d'obligation — et �
 de répondre d'un geste : sans compte, sans application, sans négociation, sans que le
 silence soit un refus.
 
-**Statut : v0.** Le geste de base fonctionne : liste, intentions datées, réponses,
-exports, rappels. La variante « à fixer » et les croisements viendront — ou pas — plus tard.
+**Statut : v0, en service** (perches.robotsinlove.be, août 2026). Le geste de base
+fonctionne : liste, perches datées, trois réponses, rappels, courriels logistiques,
+exports ICS/JSON, atelier avec confirmations et archive. Relu par une revue croisée
+(hôte, invité, sécurité, produit) le 28 août 2026 ; tout ce qu'elle a trouvé est traité.
+La variante « à fixer » et les croisements viendront — ou pas — plus tard.
 Ce projet est maintenu par intermittence ; le silence vaut « pas maintenant ».
 
 ## Le geste : l'intention, pas l'invitation
 
-Une intention comporte une activité, un moment (ou « à fixer »), un lieu, une capacité
-indicative, et la mention « j'y vais de toute façon ». Ce qui la distingue d'une
+Une intention — une *perche*, à l'écran — comporte une activité, un moment (« à fixer »
+viendra plus tard), un lieu, des places à titre indicatif, et la mention « j'y vais de
+toute façon ». Ce qui la distingue d'une
 invitation :
 
 - **Elle ne demande rien.** Aucune réponse n'est attendue ; le silence vaut « pas cette fois ».
@@ -42,20 +46,25 @@ structure — boutons, champs, absence de champs — et sont encodées en tests.
 
 ## Comment ça marche
 
-**L'hôte** crée sa liste — une page dans sa voix : une lettre en texte libre, un état
-(« je rouvre doucement », « en retrait pour l'instant », « disponible »), des
-intentions. Il reçoit un lien public et un lien secret d'édition — pas de compte, pas
-de mot de passe. Il partage la liste ou une seule intention là où ses amis sont déjà
-(WhatsApp, Signal, e-mail, Mastodon…) ; le lien s'affiche sous forme de carte. Il
-consulte un résumé quand il veut ; rien ne le notifie.
+**L'hôte** ouvre sa liste (un titre, son e-mail) et arrive dans son *atelier* — une
+page dans sa voix : une introduction en Markdown de lettre (paragraphes, gras,
+italique, listes, liens), puis des perches. L'atelier est identifié par un lien secret,
+sa clé — pas de compte, pas de mot de passe ; son navigateur s'en souvient, son e-mail
+le lui renvoie. Il partage sa page ou une seule perche là où ses amis sont déjà
+(WhatsApp, Signal, e-mail…) ; le lien s'affiche sous forme de carte. Il consulte son
+atelier quand il veut ; rien ne le notifie. Il peut corriger une perche, l'annuler (et
+la rétablir), effacer une réponse — chaque geste irréversible se confirme — et mettre
+sa liste en retrait.
 
 **L'invité** ouvre le lien, lit, choisit « j'y serai », « peut-être » ou « ah zut, j'aurais bien aimé », donne un prénom.
 Il peut laisser une ligne, lue par l'hôte, sans réponse attendue — l'outil le dit.
 Optionnel : un e-mail pour le rappel de la veille et les changements logistiques, et
 un fichier calendrier. Rien d'autre.
 
-**Après** : l'activité a lieu, avec ou sans compagnie. L'intention passée disparaît de
-la page ; l'hôte garde ses lettres.
+**Après** : l'activité a lieu, avec ou sans compagnie. La perche passée disparaît de
+la page ; sa propre page reste lisible (prénoms compris) trente jours, puis ne montre
+plus que « c'est passé » ; l'e-mail d'un invité est effacé au même moment. L'hôte
+garde tout dans son archive.
 
 ## Hors périmètre, par principe
 
@@ -67,14 +76,17 @@ voir [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Architecture
 
 Décentralisé comme le courriel : n'importe qui peut faire tourner une instance, chaque
-liste est exportable à tout moment (HTML statique, ICS, JSON), les invités n'ont
+liste est exportable à tout moment (ICS, JSON public, export complet de l'hôte), les invités n'ont
 besoin que d'un navigateur. Une instance peut s'éteindre sans rien faire perdre à
 personne.
 
 Une instance = un petit serveur : **Go, rendu côté serveur, SQLite, un conteneur,
-presque pas de JavaScript**. Identité de l'hôte = lien secret d'édition, avec e-mail
-optionnel de récupération. Politique d'instance au choix : création de listes ouverte,
-sur code d'invitation, ou fermée.
+presque pas de JavaScript** (un bouton « copier » et l'aperçu de l'adresse, en
+amélioration progressive). Identité de l'hôte = lien secret d'édition, que son e-mail
+(demandé à l'ouverture) permet de retrouver ; cookie côté hôte seulement. Politique
+d'instance au choix : création de listes ouverte, sur invitation (un hôte peut inviter
+depuis son atelier), ou fermée. Garde-fous : corps et champs bornés, limite de débit,
+pot de miel, en-têtes de sécurité et CSP, e-mails des invités purgés après un mois.
 
 Les choix d'architecture sont notés dans [DECISIONS.md](DECISIONS.md), une ligne datée
 par choix.
@@ -88,7 +100,8 @@ docker compose up -d        # l'instance écoute sur :8080
 Ou sans Docker : `go build && ./perches`.
 
 Variables d'environnement : `PERCHES_DB` (chemin SQLite), `PERCHES_ADDR`,
-`PERCHES_BASE_URL`, `PERCHES_POLITIQUE`, `PERCHES_DERRIERE_PROXY` (croire X-Forwarded-For — seulement derrière un reverse proxy) (`ouverte` | `invitation` | `fermee`),
+`PERCHES_BASE_URL`, `PERCHES_POLITIQUE` (`ouverte` | `invitation` | `fermee`),
+`PERCHES_DERRIERE_PROXY` (croire X-Forwarded-For — seulement derrière un reverse proxy),
 `PERCHES_SMTP_HOTE/PORT/UTILISATEUR/MDP/DE` (sans SMTP, les courriels sont
 journalisés). Un lien d'invitation (`/?code=…`, à envoyer à la personne) se génère avec `perches -nouveau-code`.
 
