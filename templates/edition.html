@@ -37,11 +37,10 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 {{if eq .OK "corrige"}}<p class="ok">Corrigé.</p>{{end}}
 {{if eq .OK "retablie"}}<p class="ok">Rétablie — ceux qui avaient laissé un e-mail sont prévenus.</p>{{end}}
 {{range .AVenir}}
-<article class="edition" id="perche-{{.ID}}">
-<h3><a href="/i/{{.Jeton}}">{{.Titre}}</a></h3>
-<p class="quand">{{quandfr .Quand}}{{with .Lieu}} — {{.}}{{end}}
-{{if eq .Visibilite "lien"}}· par lien seulement{{end}}
-{{if .Capacite.Valid}}· {{.Capacite.Int64}} places, à titre indicatif{{end}}</p>
+<article class="edition carte-atelier" id="perche-{{.ID}}">
+<p class="quand">{{quandfr .Quand}}{{with .Lieu}} — {{.}}{{end}}</p>
+<h3><a href="/i/{{.Jeton}}" target="_blank" rel="noopener">{{.Titre}}</a></h3>
+{{if or (eq .Visibilite "lien") .Capacite.Valid}}<p class="discret">{{if eq .Visibilite "lien"}}par lien seulement{{end}}{{if and (eq .Visibilite "lien") .Capacite.Valid}} · {{end}}{{if .Capacite.Valid}}{{.Capacite.Int64}} places, à titre indicatif{{end}}</p>{{end}}
 <p class="partage discret">Lien de cette perche :
 <span class="copiable"><span id="lien-i-{{.ID}}">{{$.BaseURL}}/i/{{.Jeton}}</span><button type="button" class="discret" hidden data-copier="lien-i-{{.ID}}">copier</button></span></p>
 <ul class="reponses">
@@ -106,9 +105,9 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 <summary>Archive — {{len .Passees}} {{if eq (len .Passees) 1}}perche passée{{else}}perches passées{{end}}, visible d'ici seulement</summary>
 {{if eq .OK "annulee"}}<p class="ok">Annulée — ceux qui avaient laissé un e-mail sont prévenus.</p>{{end}}
 {{range .Passees}}
-<article class="edition passee" id="perche-{{.ID}}">
-<h3>{{.Titre}}</h3>
+<article class="edition carte-atelier passee" id="perche-{{.ID}}">
 <p class="quand">{{quandfr .Quand}}{{with .Lieu}} — {{.}}{{end}}{{if .AnnuleeLe.Valid}} · annulée{{end}}</p>
+<h3>{{.Titre}}</h3>
 <ul class="reponses">
 {{range .Reponses}}
 <li>{{.Prenom}} — {{template "statut" .Statut}}{{with .Mot}} · « {{.}} »{{end}}</li>

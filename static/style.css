@@ -48,7 +48,7 @@ a { color: var(--accent); }
 .resume { color: var(--doux); }
 
 article { margin: 1.4rem 0; }
-article.edition { border-left: 2px solid var(--trait); padding-left: 1rem; }
+
 article.passee { opacity: .8; }
 
 form { margin: 1rem 0; }
@@ -180,3 +180,13 @@ details.plus summary { color: var(--doux); }
 .marque { width: 1.1em; height: 1.1em; vertical-align: -.2em; border-radius: 4px; }
 .marque.grande { width: 1em; height: 1em; vertical-align: -.1em; margin-right: .1em; }
 @media (prefers-reduced-motion: reduce) { .carte { transition: none; } }
+
+/* Perches en cartes dans l'atelier */
+.carte-atelier { border: 1px solid var(--trait); border-radius: 10px; background: #fffcf6; padding: 1rem 1.2rem 1rem; margin: 1rem 0; }
+.carte-atelier > .quand { font-size: .9rem; color: var(--accent); margin: 0; }
+.carte-atelier h3 { font-size: 1.25rem; font-weight: normal; margin: .1rem 0 .4rem; }
+.carte-atelier h3 a { color: var(--encre); text-decoration: none; }
+.carte-atelier h3 a:hover { text-decoration: underline; }
+.carte-atelier ul.reponses { margin: .6rem 0; padding: .6rem 0 0; border-top: 1px dashed var(--trait); }
+.carte-atelier.passee { background: transparent; opacity: .85; }
+.carte-atelier details > summary { font-size: .95rem; }
