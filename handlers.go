@@ -153,16 +153,21 @@ func (app *App) recupererLien(w http.ResponseWriter, r *http.Request) {
 	}
 	email := strings.TrimSpace(r.FormValue("email"))
 	if email != "" {
-		rows, err := app.db.Query(`SELECT `+colonnesListe+` FROM listes WHERE email = ?`, email)
-		if err == nil {
-			defer rows.Close()
+		// On lit tout, on ferme, puis on envoie : avec une seule connexion SQLite,
+		// écrire dans `envois` pendant que `rows` est ouvert bloquerait tout le service.
+		var listes []Liste
+		if rows, err := app.db.Query(`SELECT `+colonnesListe+` FROM listes WHERE email = ?`, email); err == nil {
 			for rows.Next() {
 				if l, err := scanListe(rows); err == nil {
-					corps := fmt.Sprintf("Ta liste « %s » :\n\nTa page, à partager : %s/l/%s\nTon atelier (ta clé — garde ce lien pour toi) : %s/e/%s\n",
-						l.Titre, app.baseURL, l.Slug, app.baseURL, l.JetonEdition)
-					app.envoyer(email, "Perches — ton atelier", corps, "recuperation_lien", 0, l.ID)
+					listes = append(listes, *l)
 				}
 			}
+			rows.Close()
+		}
+		for _, l := range listes {
+			corps := fmt.Sprintf("Ta liste « %s » :\n\nTa page, à partager : %s/l/%s\nTon atelier (ta clé — garde ce lien pour toi) : %s/e/%s\n",
+				l.Titre, app.baseURL, l.Slug, app.baseURL, l.JetonEdition)
+			app.envoyer(email, "Perches — ton atelier", corps, "recuperation_lien", 0, l.ID)
 		}
 	}
 	app.rendre(w, "message.html", map[string]any{
@@ -343,20 +348,8 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 			aVenir = append(aVenir, intentions[k])
 		}
 	}
-	var autres []Liste
-	if liste.Email.Valid {
-		if rows, err := app.db.Query(`SELECT `+colonnesListe+` FROM listes WHERE email = ? AND id <> ? ORDER BY cree_le`, liste.Email.String, liste.ID); err == nil {
-			for rows.Next() {
-				if l, err := scanListe(rows); err == nil {
-					autres = append(autres, *l)
-				}
-			}
-			rows.Close()
-		}
-	}
 	app.rendre(w, "edition.html", map[string]any{
 		"TitrePage":     liste.Titre + " — atelier",
-		"Autres":        autres,
 		"Liste":         liste,
 		"AVenir":        aVenir,
 		"Passees":       passees,

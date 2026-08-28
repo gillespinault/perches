@@ -758,6 +758,36 @@ func TestDecision_UnePercheSeCorrigeEntierement(t *testing.T) {
 	}
 }
 
+func TestSecurite_RecuperationNeBloquePasLeService(t *testing.T) {
+	app, m := appTest(t)
+	app.db.Exec(`INSERT INTO listes (slug, jeton_edition, titre, lettre, etat, email) VALUES ('a','ea','A','','','h@exemple.be')`)
+	app.db.Exec(`INSERT INTO listes (slug, jeton_edition, titre, lettre, etat, email) VALUES ('b','eb','B','','','h@exemple.be')`)
+	fini := make(chan bool)
+	go func() { POST(app, "/recuperation", url.Values{"email": {"h@exemple.be"}}); fini <- true }()
+	select {
+	case <-fini:
+	case <-time.After(3 * time.Second):
+		t.Fatal("la récupération bloque (lecture ouverte pendant une écriture sur l'unique connexion)")
+	}
+	if len(m.Envois) != 2 {
+		t.Fatalf("un courriel par liste, reçu %d", len(m.Envois))
+	}
+	if rec := GET(app, "/l/a"); rec.Code != 200 {
+		t.Fatal("le service doit répondre après la récupération")
+	}
+}
+
+func TestSecurite_LEmailNEstPasUneCle(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	app.db.Exec(`INSERT INTO listes (slug, jeton_edition, titre, lettre, etat, email) VALUES ('victime','secret-victime','Victime','','','v@exemple.be')`)
+	// l'attaquant déclare l'e-mail de la victime dans ses réglages
+	POST(app, "/e/edtest/reglages", url.Values{"titre": {"Attaquant"}, "slug": {"test"}, "email": {"v@exemple.be"}})
+	if strings.Contains(GET(app, "/e/edtest").Body.String(), "secret-victime") {
+		t.Fatal("un e-mail non vérifié ne doit jamais donner accès à l'atelier d'une autre liste")
+	}
+}
+
 // ---- hors périmètre : le test d'absence ----
 
 func TestHorsPerimetre_LeSchemaResteMaigre(t *testing.T) {

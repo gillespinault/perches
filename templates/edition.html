@@ -130,10 +130,6 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 <label>E-mail — c'est par lui que tu retrouves ton atelier <input name="email" type="email" required value="{{.Liste.Email.String}}"></label>
 <button class="sobre">Enregistrer</button>
 </form>
-{{with .Autres}}
-<p class="discret">Tes autres listes :
-{{range .}}<a href="/e/{{.JetonEdition}}">{{.Titre}}</a> {{end}}</p>
-{{end}}
 </details>
 
 <div class="exports"><a href="/e/{{.Liste.JetonEdition}}/export.json">tout exporter (JSON)</a> ·
