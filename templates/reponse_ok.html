@@ -8,5 +8,6 @@
 ou un changement de dernière minute.</p>
 {{end}}
 <p class="exports"><a href="/i/{{.I.Jeton}}.ics">ajouter à mon calendrier</a> ·
-<a href="/i/{{.I.Jeton}}">revenir à l'intention</a></p>
+<a href="/i/{{.I.Jeton}}">revenir à la perche</a>{{with .Liste}} ·
+<a href="/l/{{.Slug}}">la page de {{.Titre}}</a>{{end}}</p>
 {{template "pied" .}}

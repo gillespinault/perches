@@ -125,3 +125,16 @@ footer {
 .prefixe input { flex: 1; }
 .copiable { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
 .copiable button { padding: .25rem .7rem; font-size: .9rem; }
+
+/* Atelier de l'hôte */
+.bienvenue { border: 1px solid var(--trait); border-radius: 6px; padding: 1rem 1.2rem; margin-bottom: 1.5rem; background: #fff9ef; }
+.bienvenue h1 { margin-bottom: .5rem; }
+.partage { color: var(--doux); font-size: .95rem; margin: .4rem 0; }
+.enligne-champs { display: flex; gap: .5rem; }
+.enligne-champs input[type="time"] { max-width: 9rem; }
+details.archive { margin-top: 2.5rem; }
+details.archive summary { border-bottom: 1px solid var(--trait); padding-bottom: .25rem; font-size: 1.2rem; }
+details.pied-page { margin-top: 3rem; font-size: .9rem; }
+details.pied-page summary { color: var(--doux); }
+details > label { display: block; }
+button .discret { color: inherit; opacity: .75; }

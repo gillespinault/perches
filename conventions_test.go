@@ -526,7 +526,7 @@ func TestDecision_CodeInvitationRequis(t *testing.T) {
 	}
 	app.db.Exec(`INSERT INTO codes_invitation (code) VALUES ('sesame')`)
 	form.Set("code", "sesame")
-	if rec := POST(app, "/listes", form); rec.Code != 200 {
+	if rec := POST(app, "/listes", form); rec.Code != 303 {
 		t.Fatalf("avec un code valide, la création doit passer, reçu %d", rec.Code)
 	}
 	form2 := url.Values{"titre": {"Encore"}, "slug": {"encore"}, "code": {"sesame"}}
@@ -535,31 +535,27 @@ func TestDecision_CodeInvitationRequis(t *testing.T) {
 	}
 }
 
-func TestDecision_UnHoteInviteLeSuivant(t *testing.T) {
+func TestDecision_InvitationInvisiblePourLesInvites(t *testing.T) {
 	app, _ := appTest(t)
 	app.politique = "invitation"
-	listeTest(t, app)
-	rec := POST(app, "/e/edtest/invitations", url.Values{})
-	if rec.Code != 303 {
-		t.Fatalf("la génération doit rediriger vers l'édition, reçu %d", rec.Code)
+	accueil := GET(app, "/").Body.String()
+	if strings.Contains(accueil, `name="titre"`) || strings.Contains(accueil, "invitation") {
+		t.Fatal("sans code, l'accueil ne parle ni de création ni d'invitation : un ami qui y tombe n'a rien à faire")
 	}
+	app.db.Exec(`INSERT INTO codes_invitation (code) VALUES ('sesame')`)
+	avecCode := GET(app, "/?code=sesame").Body.String()
+	if !strings.Contains(avecCode, `name="titre"`) || !strings.Contains(avecCode, `value="sesame"`) {
+		t.Fatal("le lien d'invitation ouvre le formulaire, code prérempli")
+	}
+	form := url.Values{"titre": {"Les perches de Léa"}, "slug": {"lea"}, "code": {"sesame"}}
+	rec := POST(app, "/listes", form)
 	loc := rec.Header().Get("Location")
-	code := strings.TrimSuffix(strings.TrimPrefix(loc, "/e/edtest?invitation="), "#inviter")
-	if len(code) != 8 {
-		t.Fatalf("redirection inattendue : %q", loc)
+	if rec.Code != 303 || !strings.HasPrefix(loc, "/e/") {
+		t.Fatalf("la création mène directement à l'édition, reçu %d %q", rec.Code, loc)
 	}
-	if page := GET(app, loc).Body.String(); !strings.Contains(page, "/?code="+code) {
-		t.Fatal("la page d'édition doit montrer le lien d'invitation prérempli")
-	}
-	if page := GET(app, "/?code="+code).Body.String(); !strings.Contains(page, `value="`+code+`"`) {
-		t.Fatal("l'accueil doit préremplir le code reçu par le lien")
-	}
-	form := url.Values{"titre": {"Les perches de Léa"}, "slug": {"lea"}, "code": {code}}
-	if rec := POST(app, "/listes", form); rec.Code != 200 {
-		t.Fatalf("le code généré doit permettre la création, reçu %d", rec.Code)
-	}
-	if rec := POST(app, "/e/inconnu/invitations", url.Values{}); rec.Code != 404 {
-		t.Fatalf("sans jeton d'édition valide, pas de code, reçu %d", rec.Code)
+	page := GET(app, loc).Body.String()
+	if !strings.Contains(page, "/l/lea") || !strings.Contains(page, strings.TrimSuffix(loc, "?bienvenue=1")) {
+		t.Fatal("l'édition de bienvenue montre les deux liens : public et secret")
 	}
 }
 

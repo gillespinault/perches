@@ -90,7 +90,7 @@ Ou sans Docker : `go build && ./perches`.
 Variables d'environnement : `PERCHES_DB` (chemin SQLite), `PERCHES_ADDR`,
 `PERCHES_BASE_URL`, `PERCHES_POLITIQUE` (`ouverte` | `invitation` | `fermee`),
 `PERCHES_SMTP_HOTE/PORT/UTILISATEUR/MDP/DE` (sans SMTP, les courriels sont
-journalisés). Un code d'invitation se génère avec `perches -nouveau-code`.
+journalisés). Un lien d'invitation (`/?code=…`, à envoyer à la personne) se génère avec `perches -nouveau-code`.
 
 Les conventions sont encodées dans la suite de tests : `go test ./...`
 (voir [docs/tests-conventions.md](docs/tests-conventions.md)).

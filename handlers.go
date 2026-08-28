@@ -104,7 +104,7 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(r.FormValue("email"))
 	res, err := app.db.Exec(`INSERT INTO listes (slug, jeton_edition, titre, lettre, etat, email)
 		VALUES (?,?,?,?,?,?)`,
-		slug, je, titre, r.FormValue("lettre"), strings.TrimSpace(r.FormValue("etat")), nullSi(email))
+		slug, je, titre, "", "", nullSi(email))
 	if err != nil {
 		http.Error(w, "Cette adresse est déjà prise.", http.StatusConflict)
 		return
@@ -119,13 +119,7 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 			titre, app.baseURL, slug, app.baseURL, je)
 		app.envoyer(email, "Perches — ton lien d'édition", corps, "recuperation_lien", 0, listeID)
 	}
-	app.rendre(w, "liste_creee.html", map[string]any{
-		"TitrePage":   titre,
-		"Titre":       titre,
-		"LienPublic":  app.baseURL + "/l/" + slug,
-		"LienEdition": app.baseURL + "/e/" + je,
-		"EmailEnvoye": email != "",
-	})
+	http.Redirect(w, r, "/e/"+je+"?bienvenue=1", http.StatusSeeOther)
 }
 
 func (app *App) recupererLien(w http.ResponseWriter, r *http.Request) {
@@ -321,7 +315,9 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 		"Passees":       passees,
 		"TotalReponses": total,
 		"BaseURL":       app.baseURL,
-		"Invitation":    r.URL.Query().Get("invitation"),
+		"LienPublic":    app.baseURL + "/l/" + liste.Slug,
+		"LienEdition":   app.baseURL + "/e/" + liste.JetonEdition,
+		"Bienvenue":     r.URL.Query().Has("bienvenue"),
 	})
 }
 
@@ -490,24 +486,4 @@ func (app *App) effacerReponse(w http.ResponseWriter, r *http.Request) {
 	app.db.Exec(`DELETE FROM reponses WHERE id = ?
 		AND intention_id IN (SELECT id FROM intentions WHERE liste_id = ?)`, id, liste.ID)
 	http.Redirect(w, r, "/e/"+liste.JetonEdition, http.StatusSeeOther)
-}
-
-// creerInvitation : un hôte invite quelqu'un à ouvrir sa propre liste. Le code est
-// à usage unique ; il est montré une fois, sous forme de lien prérempli, sur la page
-// d'édition (redirection après POST pour qu'un rechargement ne crée pas de doublon).
-func (app *App) creerInvitation(w http.ResponseWriter, r *http.Request) {
-	if app.tropVite(w, r) {
-		return
-	}
-	liste, err := app.listeParJetonEdition(r.PathValue("jeton"))
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	code := jeton(4)
-	if _, err := app.db.Exec(`INSERT INTO codes_invitation (code) VALUES (?)`, code); err != nil {
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?invitation="+code+"#inviter", http.StatusSeeOther)
 }

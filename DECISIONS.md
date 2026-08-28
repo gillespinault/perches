@@ -21,6 +21,9 @@ Une ligne datée par choix. Contexte complet : document projet dans le wiki.
 - 2026-08-27 — Identité de l'invité : rien — pas même un cookie. Répondre est un POST anonyme portant un prénom.
 - 2026-08-27 — Rappels de la veille : boucle horaire in-process, idempotente via le journal `envois`. Pas de cron externe.
 - 2026-08-27 — Effacement public des réponses : 30 jours après la date de l'intention. La v0 exige une date (« à fixer » viendra avec la variante ouverte).
-- 2026-08-28 — Codes d'invitation générés depuis la page d'édition : un hôte invite le suivant, lien prérempli (`/?code=…`). Une seule touche de JavaScript, en amélioration progressive : le bouton « copier ».
+- 2026-08-28 — L'invitation n'existe pas dans l'interface : un lien `/?code=…` sorti de la CLI ouvre le formulaire, et l'accueil sans code ne parle ni de création ni d'invitation. Un ami qui tombe sur l'accueil n'a rien à y faire.
+- 2026-08-28 — Ouvrir une liste = trois champs (titre, adresse, e-mail) puis l'atelier directement : la lettre s'écrit là où elle se relit. Pas de page intermédiaire ; la clé d'édition est l'adresse de l'atelier.
+- 2026-08-28 — Partager = copier un lien, rien d'autre. Chaque page et chaque perche a son lien copiable dans l'atelier. Une seule touche de JavaScript, en amélioration progressive : le bouton « copier ».
+- 2026-08-28 — Vocabulaire à l'écran : « atelier » pour la page d'édition, « clé » pour le lien secret, « perche tendue » pour une intention à venir. Le formulaire d'une perche montre quatre champs ; le reste sous « Plus d'options ».
 - 2026-08-28 — Le « silence vaut pas cette fois » reste une convention du système, pas un slogan : une mention douce sur la page de réponse, rien en pied de page ni à l'accueil.
 - 2026-08-28 — « État » reste le mot du domaine (schéma, README) ; à l'écran il devient « En ce moment », pour ne pas sonner comme un diagnostic.
