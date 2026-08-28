@@ -102,7 +102,24 @@ func quandFR(q sql.NullString) string {
 	if err != nil {
 		return q.String
 	}
-	s := fmt.Sprintf("%s %d %s %d", joursFR[int(t.Weekday())], t.Day(), moisFR[t.Month()-1], t.Year())
+	// Proche : dit en jours ; loin : la date, l'année seulement si elle change.
+	aujourdhui := time.Now()
+	jour := func(x time.Time) time.Time { return time.Date(x.Year(), x.Month(), x.Day(), 0, 0, 0, 0, time.Local) }
+	ecart := int(jour(t).Sub(jour(aujourdhui)).Hours() / 24)
+	s := fmt.Sprintf("%s %d %s", joursFR[int(t.Weekday())], t.Day(), moisFR[t.Month()-1])
+	if t.Year() != aujourdhui.Year() {
+		s += fmt.Sprintf(" %d", t.Year())
+	}
+	switch {
+	case ecart == 0 && avecHeure && t.Hour() >= 17:
+		s = "ce soir"
+	case ecart == 0:
+		s = "aujourd'hui"
+	case ecart == 1:
+		s = "demain, " + s
+	case ecart > 1 && ecart < 7:
+		s = fmt.Sprintf("dans %d jours — %s", ecart, s)
+	}
 	if avecHeure {
 		s += fmt.Sprintf(" à %dh%02d", t.Hour(), t.Minute())
 	}

@@ -3,7 +3,7 @@
 :root {
   --encre: #2c2721;
   --papier: #faf6ef;
-  --doux: #8a7f70;
+  --doux: #6f6558;
   --trait: #e2d9cb;
   --accent: #7a5c3e;
 }
@@ -144,3 +144,17 @@ label.site { position: absolute; left: -10000px; width: 1px; height: 1px; overfl
 .atelier-memo { border: 1px solid var(--trait); border-radius: 6px; padding: .8rem 1.2rem; margin: 1.5rem 0; background: #fff9ef; }
 .atelier-memo h2 { margin-top: 0; border: none; }
 .atelier-memo p { font-size: 1.15rem; margin: .2rem 0; }
+
+/* Lot 2 — la perche côté invité */
+.quand { color: var(--encre); }
+.geste { margin: .1rem 0 .8rem; font-size: .95rem; }
+.voix { margin: 1.4rem 0; padding: .2rem 0 .2rem 1rem; border-left: 3px solid var(--trait); color: var(--doux); font-style: italic; white-space: pre-line; }
+.voix a { font-style: normal; white-space: nowrap; }
+.merci { border: 1px solid var(--trait); border-radius: 6px; padding: .8rem 1.1rem; margin: 0 0 1.4rem; background: #fff9ef; }
+.merci p { margin: .3rem 0; }
+fieldset label { display: block; padding: .55rem .4rem; margin: 0; border-radius: 4px; }
+fieldset label:hover { background: rgba(0,0,0,.03); }
+input[type="radio"] { width: 1.3em; height: 1.3em; accent-color: var(--accent); vertical-align: -.2em; }
+details.plus { margin: .6rem 0 1rem; }
+details.plus summary { color: var(--doux); }
+.lien-externe a { word-break: break-all; }

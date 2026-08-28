@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -203,10 +204,17 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	intentions, err := app.intentionsPubliques(liste.ID)
+	toutes, err := app.intentionsPubliques(liste.ID)
 	if err != nil {
 		http.Error(w, "erreur interne", http.StatusInternalServerError)
 		return
+	}
+	// même règle que la page de la perche : passée deux heures après l'heure, ou à minuit sans heure
+	var intentions []Intention
+	for _, i := range toutes {
+		if !i.Passee() {
+			intentions = append(intentions, i)
+		}
 	}
 	switch format {
 	case "ics":
@@ -216,22 +224,74 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 	default:
 		app.rendre(w, "liste.html", map[string]any{
 			"TitrePage":  liste.Titre,
-			"OG":         map[string]string{"Titre": liste.Titre, "Description": premiereLigne(liste.Lettre), "URL": app.baseURL + "/l/" + liste.Slug},
+			"OG":         app.og(liste.Titre, descriptionOG(liste.Lettre, len(intentions)), "/l/"+liste.Slug),
+			"Alternate":  app.baseURL + "/l/" + liste.Slug + ".json",
 			"Liste":      liste,
 			"Intentions": intentions,
 		})
 	}
 }
 
-func premiereLigne(s string) string {
-	s = strings.TrimSpace(s)
-	if i := strings.IndexAny(s, "\r\n"); i >= 0 {
-		s = s[:i]
+// descriptionOG : ce que montre la carte de partage. Une salutation seule sur sa ligne
+// (« Bonjour, ») ne dit rien : on prend la première ligne de plus de 40 caractères.
+func descriptionOG(lettre string, nbPerches int) string {
+	for _, l := range strings.Split(lettre, "\n") {
+		l = strings.TrimSpace(l)
+		if len([]rune(l)) > 40 {
+			return couper(l, 140)
+		}
 	}
-	if len([]rune(s)) > 140 {
-		s = string([]rune(s)[:140]) + "…"
+	switch nbPerches {
+	case 0:
+		return "Une liste d'intentions, sans obligation."
+	case 1:
+		return "Une perche tendue — une liste d'intentions, sans obligation."
 	}
-	return s
+	return fmt.Sprintf("%d perches tendues — une liste d'intentions, sans obligation.", nbPerches)
+}
+
+func couper(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return strings.TrimRight(string(r[:n]), " ,;:") + "…"
+}
+
+func (app *App) og(titre, description, chemin string) map[string]string {
+	return map[string]string{"Titre": titre, "Description": description,
+		"URL": app.baseURL + chemin, "Image": app.baseURL + "/static/carte.png"}
+}
+
+// phraseAuraitAime : « Anna aurait bien aimé. », « Anna et Marc auraient bien aimé. »
+func phraseAuraitAime(prenoms []string) string {
+	switch len(prenoms) {
+	case 0:
+		return ""
+	case 1:
+		return prenoms[0] + " aurait bien aimé."
+	}
+	return strings.Join(prenoms[:len(prenoms)-1], ", ") + " et " + prenoms[len(prenoms)-1] + " auraient bien aimé."
+}
+
+// phrasePresences : « Seront là : Léa, Tom, et une personne discrète — 3 sur 4 places environ. »
+func phrasePresences(visibles []string, discrets int, capacite sql.NullInt64) string {
+	if len(visibles)+discrets == 0 {
+		return ""
+	}
+	parts := append([]string{}, visibles...)
+	switch discrets {
+	case 0:
+	case 1:
+		parts = append(parts, "une personne discrète")
+	default:
+		parts = append(parts, fmt.Sprintf("%d personnes discrètes", discrets))
+	}
+	s := "Seront là : " + strings.Join(parts, ", ")
+	if capacite.Valid {
+		s += fmt.Sprintf(" — %d sur %d places environ", len(visibles)+discrets, capacite.Int64)
+	}
+	return s + "."
 }
 
 func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
@@ -251,9 +311,13 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 	}
 	app.chargerReponses(intention)
 	var jySerai, peutEtre, auraitAime []string
+	discrets := 0
 	if !intention.ReponsesEffacees() {
 		for _, rep := range intention.Reponses {
 			if !rep.PrenomVisible {
+				if rep.Statut == "jy_serai" {
+					discrets++
+				}
 				continue
 			}
 			switch rep.Statut {
@@ -266,19 +330,28 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	var merci map[string]any
+	if s := r.URL.Query().Get("merci"); s == "jy_serai" || s == "peut_etre" || s == "jaurais_aime" {
+		merci = map[string]any{"Statut": s, "Prenom": r.URL.Query().Get("prenom"), "AvecEmail": r.URL.Query().Get("email") == "1"}
+	}
+	ouverte := !intention.AnnuleeLe.Valid && !intention.Passee()
 	ogDesc := quandFR(intention.Quand)
 	if intention.Lieu != "" {
 		ogDesc += " — " + intention.Lieu
 	}
 	app.rendre(w, "intention.html", map[string]any{
-		"TitrePage":         intention.Titre,
-		"OG":                map[string]string{"Titre": intention.Titre, "Description": ogDesc, "URL": app.baseURL + "/i/" + intention.Jeton},
-		"Liste":             liste,
-		"I":                 intention,
-		"PrenomsJySerai":    jySerai,
-		"PrenomsPeutEtre":   peutEtre,
-		"PrenomsAuraitAime": auraitAime,
-		"FormulaireOuvert":  !intention.AnnuleeLe.Valid && !intention.Passee(),
+		"TitrePage":        intention.Titre,
+		"OG":               app.og(intention.Titre, ogDesc, "/i/"+intention.Jeton),
+		"Liste":            liste,
+		"I":                intention,
+		"Ouverte":          ouverte,
+		"Presences":        phrasePresences(jySerai, discrets, intention.Capacite),
+		"PrenomsPeutEtre":  peutEtre,
+		"AuraitAime":       phraseAuraitAime(auraitAime),
+		"LienSeulement":    intention.Visibilite == "lien",
+		"Voix":             couper(strings.TrimSpace(liste.Lettre), 280),
+		"Merci":            merci,
+		"FormulaireOuvert": ouverte,
 	})
 }
 
@@ -286,7 +359,7 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 	if app.tropVite(w, r) {
 		return
 	}
-	intention, liste, err := app.intentionParJeton(r.PathValue("jeton"))
+	intention, _, err := app.intentionParJeton(r.PathValue("jeton"))
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -325,25 +398,39 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 	}
 	if email != "" {
 		// Un e-mail ne s'inscrit qu'une fois par perche : un rappel par personne, pas par clic.
-		app.db.QueryRow(`SELECT count(*) FROM reponses WHERE intention_id = ? AND email = ?`, intention.ID, email).Scan(&n)
+		app.db.QueryRow(`SELECT count(*) FROM reponses WHERE intention_id = ? AND email = ? AND lower(prenom) <> lower(?)`, intention.ID, email, prenom).Scan(&n)
 		if n > 0 {
 			email = ""
 		}
 	}
-	if _, err := app.db.Exec(`INSERT INTO reponses (intention_id, prenom, statut, mot, prenom_visible, email)
-		VALUES (?,?,?,?,?,?)`, intention.ID, prenom, statut, mot, visible, nullSi(email)); err != nil {
+	// Une réponse par prénom et par perche : revenir la veille et redonner son prénom remplace,
+	// sans cookie ni compte (convention 8).
+	var existante int64
+	app.db.QueryRow(`SELECT id FROM reponses WHERE intention_id = ? AND lower(prenom) = lower(?)`, intention.ID, prenom).Scan(&existante)
+	err = nil
+	if existante != 0 {
+		if email == "" {
+			_, err = app.db.Exec(`UPDATE reponses SET prenom = ?, statut = ?, mot = ?, prenom_visible = ?, cree_le = datetime('now') WHERE id = ?`,
+				prenom, statut, mot, visible, existante)
+		} else {
+			_, err = app.db.Exec(`UPDATE reponses SET prenom = ?, statut = ?, mot = ?, prenom_visible = ?, email = ?, cree_le = datetime('now') WHERE id = ?`,
+				prenom, statut, mot, visible, email, existante)
+		}
+	} else {
+		_, err = app.db.Exec(`INSERT INTO reponses (intention_id, prenom, statut, mot, prenom_visible, email)
+			VALUES (?,?,?,?,?,?)`, intention.ID, prenom, statut, mot, visible, nullSi(email))
+	}
+	if err != nil {
 		http.Error(w, "erreur interne", http.StatusInternalServerError)
 		return
 	}
 	// Convention 7 : aucune notification vers l'hôte — rien ne part d'ici.
-	app.rendre(w, "reponse_ok.html", map[string]any{
-		"TitrePage": intention.Titre,
-		"Liste":     liste,
-		"I":         intention,
-		"Prenom":    prenom,
-		"Statut":    statut,
-		"AvecEmail": email != "",
-	})
+	// Redirection : recharger la page ne redépose pas la réponse.
+	q := url.Values{"merci": {statut}, "prenom": {prenom}}
+	if email != "" {
+		q.Set("email", "1")
+	}
+	http.Redirect(w, r, "/i/"+intention.Jeton+"?"+q.Encode(), http.StatusSeeOther)
 }
 
 // ---- édition (identité = le jeton, rien d'autre) ----
@@ -414,12 +501,12 @@ func (app *App) majListe(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	lettre, etat := r.FormValue("lettre"), strings.TrimSpace(r.FormValue("etat"))
-	if !borne(lettre, 5000) || !borne(etat, 120) {
-		http.Error(w, "L'introduction tient en 5 000 caractères, la ligne « en ce moment » en 120.", http.StatusBadRequest)
+	lettre := r.FormValue("lettre")
+	if !borne(lettre, 5000) {
+		http.Error(w, "L'introduction tient en 5 000 caractères.", http.StatusBadRequest)
 		return
 	}
-	if _, err := app.db.Exec(`UPDATE listes SET lettre = ?, etat = ? WHERE id = ?`, lettre, etat, liste.ID); err != nil {
+	if _, err := app.db.Exec(`UPDATE listes SET lettre = ?, etat = '' WHERE id = ?`, lettre, liste.ID); err != nil {
 		http.Error(w, "erreur interne", http.StatusInternalServerError)
 		return
 	}
@@ -497,7 +584,7 @@ func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
 	if c, err := strconv.Atoi(r.FormValue("capacite")); err == nil && c > 0 {
 		capacite = c
 	}
-	jyVais := r.FormValue("jy_vais") != "0" // absent = oui : « j'y vais de toute façon » par défaut
+	jyVais := true // décision 2026-08-28 : « j'y vais de toute façon », sans option
 	_, err = app.db.Exec(`INSERT INTO intentions
 		(liste_id, jeton, titre, description, quand, lieu, url_externe, capacite, jy_vais_de_toute_facon, visibilite)
 		VALUES (?,?,?,?,?,?,?,?,?,?)`,
@@ -621,7 +708,7 @@ func (app *App) majIntention(w http.ResponseWriter, r *http.Request) {
 	if c, err := strconv.Atoi(r.FormValue("capacite")); err == nil && c > 0 {
 		capacite = c
 	}
-	jyVais := r.FormValue("jy_vais") != "0"
+	jyVais := true
 	// Tout se corrige ; seuls la date et le lieu — la logistique — valent un mot aux invités.
 	change := quand != intention.Quand.String || lieu != intention.Lieu
 	if _, err := app.db.Exec(`UPDATE intentions SET titre = ?, description = ?, quand = ?, lieu = ?, url_externe = ?,

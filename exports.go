@@ -22,6 +22,7 @@ func echapperICS(s string) string {
 
 func servirICS(w http.ResponseWriter, nom string, intentions []Intention, baseURL string) {
 	w.Header().Set("Content-Type", "text/calendar; charset=utf-8")
+	w.Header().Set("Content-Disposition", `inline; filename="`+slugDe(nom)+`.ics"`)
 	var b strings.Builder
 	ligne := func(s string) { b.WriteString(s + "\r\n") }
 	ligne("BEGIN:VCALENDAR")
@@ -31,7 +32,7 @@ func servirICS(w http.ResponseWriter, nom string, intentions []Intention, baseUR
 	ligne("X-WR-CALNAME:" + echapperICS(nom))
 	horodatage := time.Now().UTC().Format("20060102T150405Z")
 	for _, i := range intentions {
-		if !i.Quand.Valid || i.AnnuleeLe.Valid {
+		if !i.Quand.Valid {
 			continue
 		}
 		t, avecHeure, err := analyserQuand(i.Quand.String)
@@ -43,8 +44,13 @@ func servirICS(w http.ResponseWriter, nom string, intentions []Intention, baseUR
 		ligne("DTSTAMP:" + horodatage)
 		if avecHeure {
 			ligne("DTSTART:" + t.Format("20060102T150400"))
+			ligne("DURATION:PT2H")
 		} else {
 			ligne("DTSTART;VALUE=DATE:" + t.Format("20060102"))
+		}
+		if i.AnnuleeLe.Valid {
+			// l'agenda de l'invité retire l'événement : c'est le vrai service d'une annulation
+			ligne("STATUS:CANCELLED")
 		}
 		ligne("SUMMARY:" + echapperICS(i.Titre))
 		if i.Lieu != "" {
@@ -119,7 +125,6 @@ func (app *App) exportComplet(w http.ResponseWriter, r *http.Request) {
 		Statut        string `json:"statut"`
 		Mot           string `json:"mot,omitempty"`
 		PrenomVisible bool   `json:"prenom_visible"`
-		Email         string `json:"email,omitempty"`
 		CreeLe        string `json:"cree_le"`
 	}
 	type intentionComplete struct {
@@ -133,7 +138,7 @@ func (app *App) exportComplet(w http.ResponseWriter, r *http.Request) {
 		for _, rep := range intentions[k].Reponses {
 			ic.Reponses = append(ic.Reponses, reponseJSON{
 				Prenom: rep.Prenom, Statut: rep.Statut, Mot: rep.Mot,
-				PrenomVisible: rep.PrenomVisible, Email: rep.Email.String, CreeLe: rep.CreeLe,
+				PrenomVisible: rep.PrenomVisible, CreeLe: rep.CreeLe,
 			})
 		}
 		items = append(items, ic)

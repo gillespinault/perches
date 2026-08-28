@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -97,7 +98,7 @@ func repondreTest(t *testing.T, app *App, jetonI, prenom, statut, mot, email str
 	form := url.Values{"prenom": {prenom}, "statut": {statut}, "mot": {mot},
 		"prenom_visible": {"1"}, "email": {email}}
 	rec := POST(app, "/i/"+jetonI+"/reponses", form)
-	if rec.Code != 200 {
+	if rec.Code != 303 {
 		t.Fatalf("réponse de %s refusée : %d %s", prenom, rec.Code, rec.Body.String())
 	}
 }
@@ -207,7 +208,7 @@ func TestConv02_CapacitePleineNeBloquePas(t *testing.T) {
 	if !strings.Contains(body, `name="statut"`) {
 		t.Fatal("le formulaire a disparu une fois la capacité dépassée")
 	}
-	if strings.Contains(strings.ToLower(body), "complet") {
+	if regexp.MustCompile(`(?i)\bcomplet`).MatchString(body) { // le mot, pas l'attribut autocomplete
 		t.Fatal("la page affiche « complet » — c'est un signal négatif")
 	}
 	repondreTest(t, app, i.Jeton, "Jo", "peut_etre", "", "")
@@ -290,15 +291,20 @@ func TestConv05_DefautSchemaEtAffichage(t *testing.T) {
 
 // ---- C6 : l'état de l'hôte est visible ----
 
-func TestConv06_EtatSurLaPagePublique(t *testing.T) {
+func TestConv06_LaVoixDeLHoteSurChaquePage(t *testing.T) {
+	// Décision 2026-08-28 : plus de champ « état » — l'hôte dit où il en est dans son introduction,
+	// et cette introduction accompagne chaque perche.
 	app, _ := appTest(t)
 	listeTest(t, app)
 	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
-	if !strings.Contains(GET(app, "/l/test").Body.String(), "je rouvre doucement") {
-		t.Fatal("l'état manque sur la page de la liste")
+	if !strings.Contains(GET(app, "/l/test").Body.String(), "voici mes envies du moment") {
+		t.Fatal("l'introduction manque sur la page de la liste")
 	}
-	if !strings.Contains(GET(app, "/i/"+i.Jeton).Body.String(), "je rouvre doucement") {
-		t.Fatal("l'état manque sur la page de l'intention")
+	if !strings.Contains(GET(app, "/i/"+i.Jeton).Body.String(), "voici mes envies du moment") {
+		t.Fatal("l'introduction manque sur la page de la perche")
+	}
+	if strings.Contains(GET(app, "/l/test").Body.String(), "je rouvre doucement") {
+		t.Fatal("l'état n'est plus affiché")
 	}
 }
 
@@ -321,7 +327,7 @@ func TestConv08_ReponseSansCookieNiSession(t *testing.T) {
 	listeTest(t, app)
 	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
 	rec := POST(app, "/i/"+i.Jeton+"/reponses", url.Values{"prenom": {"Anna"}, "statut": {"jy_serai"}})
-	if rec.Code != 200 {
+	if rec.Code != 303 {
 		t.Fatalf("répondre sans cookie ni session doit suffire, reçu %d", rec.Code)
 	}
 	if rec.Header().Get("Set-Cookie") != "" || GET(app, "/i/"+i.Jeton).Header().Get("Set-Cookie") != "" {
@@ -490,6 +496,7 @@ func TestDecision_SansEmailLaPageLeDit(t *testing.T) {
 	listeTest(t, app)
 	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
 	rec := POST(app, "/i/"+i.Jeton+"/reponses", url.Values{"prenom": {"Anna"}, "statut": {"jy_serai"}})
+	rec = GET(app, rec.Header().Get("Location"))
 	if !strings.Contains(strings.ToLower(rec.Body.String()), "revérifie la page avant d'y aller") {
 		t.Fatal("sans e-mail, la page doit dire de revérifier avant d'y aller")
 	}
@@ -572,7 +579,7 @@ func TestConv02_AhZutEstUneVraieReponse(t *testing.T) {
 	i := intentionTest(t, app, dans(1), "KIKK", "page", nil)
 	repondreTest(t, app, i.Jeton, "Anna", "jaurais_aime", "une prochaine fois", "anna@exemple.be")
 	page := GET(app, "/i/"+i.Jeton).Body.String()
-	if !strings.Contains(page, "Auraient bien aimé : Anna") {
+	if !strings.Contains(page, "Anna aurait bien aimé.") {
 		t.Fatal("« j'aurais bien aimé » s'affiche comme les autres réponses")
 	}
 	if !strings.Contains(GET(app, "/e/edtest").Body.String(), "une prochaine fois") {
@@ -746,7 +753,7 @@ func TestDecision_UnePercheSeCorrigeEntierement(t *testing.T) {
 		t.Fatalf("maj : %d", rec.Code)
 	}
 	j, _, _ := app.intentionParJeton(i.Jeton)
-	if j.Titre != "KIKK, Namur" || j.Description != "journée du vendredi" || j.Capacite.Int64 != 4 || j.Visibilite != "lien" || j.JyVais {
+	if j.Titre != "KIKK, Namur" || j.Description != "journée du vendredi" || j.Capacite.Int64 != 4 || j.Visibilite != "lien" || !j.JyVais {
 		t.Fatalf("correction non appliquée : %+v", j)
 	}
 	if len(m.Envois) != 0 {
@@ -922,6 +929,103 @@ func TestSecurite_EnTetes(t *testing.T) {
 	app.handler().ServeHTTP(rec, req)
 	if rec.Code != 403 {
 		t.Fatalf("« oublier » depuis un autre site est refusé, reçu %d", rec.Code)
+	}
+}
+
+// ---- lot 2 : le partage et la perche ----
+
+func TestDecision_UneReponseParPrenom(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	repondreTest(t, app, i.Jeton, "Léa", "jy_serai", "", "")
+	rec := POST(app, "/i/"+i.Jeton+"/reponses", url.Values{"prenom": {"léa"}, "statut": {"peut_etre"}, "prenom_visible": {"1"}})
+	if !strings.HasPrefix(rec.Header().Get("Location"), "/i/"+i.Jeton+"?") {
+		t.Fatalf("après réponse, redirection vers la perche (rechargement sans doublon), reçu %q", rec.Header().Get("Location"))
+	}
+	var n int
+	app.db.QueryRow(`SELECT count(*) FROM reponses WHERE intention_id = ?`, i.ID).Scan(&n)
+	if n != 1 {
+		t.Fatalf("revenir et redonner son prénom remplace la réponse ; trouvé %d lignes", n)
+	}
+	page := GET(app, rec.Header().Get("Location")).Body.String()
+	if !strings.Contains(page, "Peut-être : léa") || strings.Contains(page, "Seront là") || !strings.Contains(page, "C'est noté") {
+		t.Fatal("la page de la perche montre la réponse à jour et le mot de confirmation")
+	}
+}
+
+func TestDecision_PlusDOptionAConfirmer(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	POST(app, "/e/edtest/intentions", url.Values{"titre": {"Expo"}, "date": {dans(3)}, "jy_vais": {"0"}})
+	var jy bool
+	app.db.QueryRow(`SELECT jy_vais_de_toute_facon FROM intentions WHERE titre = 'Expo'`).Scan(&jy)
+	if !jy {
+		t.Fatal("« j'y vais de toute façon » n'est plus une option : c'est la règle")
+	}
+	if strings.Contains(GET(app, "/e/edtest").Body.String(), "à confirmer") {
+		t.Fatal("l'atelier ne propose plus « à confirmer »")
+	}
+}
+
+func TestDecision_CarteDePartageComplete(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	app.db.Exec(`UPDATE listes SET lettre = ? WHERE slug = 'test'`, "Bonjour,\nÇa fait un moment — quelques années, en fait. Voici ce que je compte faire ces prochaines semaines.")
+	page := GET(app, "/l/test").Body.String()
+	if strings.Contains(page, `og:description" content="Bonjour,"`) || !strings.Contains(page, `content="Ça fait un moment`) {
+		t.Fatal("la carte saute la salutation et montre la première vraie phrase")
+	}
+	if !strings.Contains(page, "og:image") || !strings.Contains(page, `rel="icon"`) || !strings.Contains(page, `rel="alternate" type="application/json"`) {
+		t.Fatal("image de carte, favicon et JSON en lien alternatif")
+	}
+	if strings.Contains(page, ">JSON<") {
+		t.Fatal("« JSON » n'apparaît plus sur la page publique")
+	}
+}
+
+func TestDecision_DatesLisibles(t *testing.T) {
+	demain := quandFR(sql.NullString{String: dans(1) + "T18:30", Valid: true})
+	if !strings.HasPrefix(demain, "demain, ") || !strings.HasSuffix(demain, " à 18h30") {
+		t.Fatalf("demain : %q", demain)
+	}
+	if s := quandFR(sql.NullString{String: dans(4), Valid: true}); !strings.HasPrefix(s, "dans 4 jours — ") {
+		t.Fatalf("dans 4 jours : %q", s)
+	}
+	if s := quandFR(sql.NullString{String: "2031-03-08", Valid: true}); s != "samedi 8 mars 2031" {
+		t.Fatalf("année lointaine affichée : %q", s)
+	}
+}
+
+func TestDecision_AnnuleeProprement(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "", "")
+	POST(app, fmt.Sprintf("/e/edtest/intentions/%d/annuler", i.ID), nil)
+	page := GET(app, "/i/"+i.Jeton).Body.String()
+	if strings.Contains(page, "de toute façon") || strings.Contains(page, "Seront là") || strings.Contains(page, "calendrier") {
+		t.Fatal("une perche annulée ne promet plus rien")
+	}
+	if ics := GET(app, "/i/"+i.Jeton+".ics").Body.String(); !strings.Contains(ics, "STATUS:CANCELLED") {
+		t.Fatal("l'ICS d'une perche annulée le dit à l'agenda")
+	}
+}
+
+func TestDecision_EmailsDesInvitesPurges(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	vieille := intentionTest(t, app, ilYA(40), "Vieille", "page", nil)
+	recente := intentionTest(t, app, dans(3), "Récente", "page", nil)
+	app.db.Exec(`INSERT INTO reponses (intention_id, prenom, statut, email) VALUES (?, 'Anna', 'jy_serai', 'a@exemple.be'), (?, 'Marc', 'jy_serai', 'm@exemple.be')`, vieille.ID, recente.ID)
+	app.purgerEmails()
+	var n int
+	app.db.QueryRow(`SELECT count(*) FROM reponses WHERE email IS NOT NULL`).Scan(&n)
+	if n != 1 {
+		t.Fatalf("un mois après la date, l'e-mail est effacé ; il en reste %d", n)
+	}
+	if strings.Contains(GET(app, "/e/edtest/export.json").Body.String(), "exemple.be") {
+		t.Fatal("l'export de l'hôte ne contient pas les e-mails des invités")
 	}
 }
 

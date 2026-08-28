@@ -8,8 +8,21 @@ import (
 
 func (app *App) boucleRappels() {
 	for {
-		app.envoyerRappels()
+		// Un rappel ne vibre pas à minuit : entre 8 h et 20 h locales seulement.
+		if h := time.Now().Hour(); h >= 8 && h < 20 {
+			app.envoyerRappels()
+		}
+		app.purgerEmails()
 		time.Sleep(time.Hour)
+	}
+}
+
+// purgerEmails : l'e-mail d'un invité n'a plus d'usage un mois après la date ; il est effacé,
+// pas seulement masqué (décision 2026-08-28, vie privée des invités).
+func (app *App) purgerEmails() {
+	if _, err := app.db.Exec(`UPDATE reponses SET email = NULL WHERE email IS NOT NULL AND intention_id IN
+		(SELECT id FROM intentions WHERE quand IS NOT NULL AND date(quand) < date('now', '-30 days'))`); err != nil {
+		log.Printf("purge e-mails : %v", err)
 	}
 }
 

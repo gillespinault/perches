@@ -32,8 +32,8 @@ structure — boutons, champs, absence de champs — et sont encodées en tests.
 2. Aucun signal négatif n'existe dans le système. Trois réponses — « j'y serai », « peut-être », « ah zut, j'aurais bien aimé » — et aucune n'est un refus.
 3. Pas de fil de discussion. Au plus une ligne, lue, sans réponse attendue.
 4. Capacité affichée sur chaque intention — indicative, jamais bloquante.
-5. « J'y vais de toute façon » par défaut.
-6. L'état de l'hôte est visible.
+5. « J'y vais de toute façon » — toujours, sans option.
+6. La voix de l'hôte est visible partout : son introduction ouvre sa page et accompagne chaque perche. Pas de champ « état » à part — il dit où il en est dans ses mots.
 7. Aucune notification poussée vers l'hôte ; il va chercher l'information quand il veut.
 8. L'invité n'a jamais de compte.
 9. Ce qui est passé disparaît de la page ; l'hôte garde ses lettres.
