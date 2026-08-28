@@ -1,20 +1,24 @@
 {{template "entete" .}}
+<p class="marque-page"><img src="/static/logo.svg" alt="" class="marque"> Perches</p>
 <h1>{{.Liste.Titre}}</h1>
-{{if .Liste.FermeeLe.Valid}}<p class="etat">En retrait pour l'instant.</p>{{else}}
+{{if .Liste.FermeeLe.Valid}}<p class="etat">Liste fermée pour le moment.</p>{{else}}
 {{with .Liste.Lettre}}<div class="lettre">{{md .}}</div>{{end}}
 {{end}}
-<section class="intentions cartes">
+<section id="perches">
+{{if .Intentions}}
+<ul class="perches">
 {{range .Intentions}}
-<a class="carte" href="/i/{{.Jeton}}">
-<span class="quand">{{.QuandFR}}</span>
-<span class="titre">{{.Titre}}</span>
+<li><a class="perche" href="/i/{{.Jeton}}">
+<span class="date"><b>{{.JourCourt}}</b>{{with .Complement}}<span>{{.}}</span>{{end}}</span>
+<span class="quoi">{{.Titre}}</span>
 {{with .Lieu}}<span class="lieu">{{.}}</span>{{end}}
-<span class="geste">si ça te dit →</span>
-</a>
-{{else}}
-{{if not .Liste.FermeeLe.Valid}}<p class="vide">Rien d'annoncé pour l'instant.</p>{{end}}
+<span class="fleche" aria-hidden="true">→</span>
+</a></li>
+{{end}}
+</ul>
+<p class="exports"><a href="/l/{{.Liste.Slug}}.ics">Ajouter ces dates à mon calendrier</a></p>
+{{else if not .Liste.FermeeLe.Valid}}
+<p class="vide">Aucune perche pour le moment.</p>
 {{end}}
 </section>
-
-{{if .Intentions}}<p class="exports"><a href="/l/{{.Liste.Slug}}.ics">ajouter ces dates à mon calendrier</a></p>{{end}}
 {{template "pied" .}}

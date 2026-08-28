@@ -7,16 +7,16 @@ un lien, un prénom, un geste. Pas de compte, pas de fil de discussion.</p>
 
 {{if or (eq .Politique "ouverte") .Code}}
 <section>
-<h2>Ouvrir ta liste</h2>
-<p class="discret">Deux choses, une minute. Ton introduction et tes premières perches viennent juste après.</p>
+<h2>Ouvrir une liste</h2>
+<p class="discret">Un titre et un e-mail. L'introduction et les perches viennent ensuite.</p>
 <form method="post" action="/listes">
 {{if .Code}}<input type="hidden" name="code" value="{{.Code}}">{{end}}
-<label>Le titre de ta liste
+<label>Titre de la liste
 <input name="titre" required maxlength="80" placeholder="Les perches de Camille"></label>
-<p class="discret">« Les perches de Camille », ou sans le mot : « Camille, envies du moment ». L'adresse de ta page en découle : <code>{{.BaseURL}}/l/<span id="apercu-slug" data-base="{{.BaseURL}}">…</span></code></p>
-<label>Ton e-mail — c'est par lui que tu retrouves ton atelier
+<p class="discret">« Les perches de Camille », ou sans le mot : « Camille, envies du moment ». Adresse de la page : <code>{{.BaseURL}}/l/<span id="apercu-slug" data-base="{{.BaseURL}}">…</span></code></p>
+<label>E-mail — il renvoie le lien d'édition
 <input name="email" type="email" required></label>
-<button>Ouvrir ma liste</button>
+<button>Ouvrir la liste</button>
 </form>
 </section>
 
@@ -24,16 +24,16 @@ un lien, un prénom, un geste. Pas de compte, pas de fil de discussion.</p>
 <section>
 <h2>Tu as déjà ta liste ?</h2>
 <form method="post" action="/recuperation">
-<label>Ton e-mail — on t'envoie le lien de ton atelier
+<label>E-mail — on t'envoie le lien d'édition
 <input name="email" type="email" required></label>
-<button>Retrouver mon atelier</button>
+<button>Recevoir le lien</button>
 </form>
 </section>
 <section>
 <h2>Pas encore ?</h2>
-{{if .CodeInvalide}}<p class="ok">Ce lien d'invitation a déjà servi, ou n'est plus valable — redemande-en un à la personne qui te l'a envoyé.</p>{{end}}
+{{if .CodeInvalide}}<p class="ok">Ce lien d'invitation a déjà servi ou n'est plus valable — redemande-en un à la personne qui te l'a envoyé.</p>{{end}}
 <p>Perches s'ouvre sur invitation : quelqu'un qui a déjà sa liste peut t'envoyer un lien pour ouvrir la tienne.</p>
-<p class="discret">Et si on t'a envoyé le lien d'une page ou d'une perche, tout se passe là-bas — il n'y a rien à faire ici.</p>
+<p class="discret">Si on t'a envoyé le lien d'une page ou d'une perche, tout se passe là-bas.</p>
 </section>
 
 {{else}}
@@ -44,9 +44,9 @@ un lien, un prénom, un geste. Pas de compte, pas de fil de discussion.</p>
 <details class="pied-page">
 <summary>Tu as déjà ta liste ?</summary>
 <form method="post" action="/recuperation">
-<label>Ton e-mail — on t'envoie le lien de ton atelier
+<label>E-mail — on t'envoie le lien d'édition
 <input name="email" type="email" required></label>
-<button class="sobre">Retrouver mon atelier</button>
+<button class="sobre">Recevoir le lien</button>
 </form>
 </details>
 {{end}}

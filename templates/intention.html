@@ -2,26 +2,24 @@
 <p class="fil"><a href="/l/{{.Liste.Slug}}">{{.Liste.Titre}}</a></p>
 {{with .Merci}}
 <aside class="merci">
-<p><strong>C'est noté{{if eq .Statut "peut_etre"}} — peut-être{{else if eq .Statut "jaurais_aime"}} — et ça fait plaisir quand même{{else}} — j'y serai{{end}}.</strong>
-{{.Prenom}}, ta réponse est déposée. Rien d'autre ne t'est demandé.</p>
-{{if eq .Statut "jaurais_aime"}}<p>Une prochaine fois, peut-être.{{if .AvecEmail}} Un e-mail te parviendra seulement si la date ou le lieu change.{{end}}</p>
-{{else if .AvecEmail}}<p>Tu recevras un rappel la veille, et un e-mail seulement si la date ou le lieu change.</p>
-{{else}}<p>Revérifie la page avant d'y aller — c'est là qu'apparaîtrait une annulation ou un changement de dernière minute.</p>{{end}}
+<p><strong>Réponse enregistrée : {{if eq .Statut "peut_etre"}}peut-être{{else if eq .Statut "jaurais_aime"}}j'aurais bien aimé{{else}}j'y serai{{end}}.</strong></p>
+{{if eq .Statut "jaurais_aime"}}{{if .AvecEmail}}<p>Un e-mail te parviendra seulement si la date ou le lieu change.</p>{{end}}
+{{else if .AvecEmail}}<p>Un rappel la veille, et un e-mail seulement si la date ou le lieu change.</p>
+{{else}}<p>Sans e-mail, revérifie la page avant d'y aller : c'est là qu'apparaîtrait une annulation ou un changement.</p>{{end}}
 </aside>
 {{end}}
 <h1>{{.I.Titre}}</h1>
-<p class="quand">{{.I.QuandFR}}{{with .I.Lieu}} — {{.}}{{end}}</p>
-{{if .I.AnnuleeLe.Valid}}<p class="annulee">C'est annulé.</p>{{end}}
-{{if .I.URLExterne.Valid}}<p class="lien-externe"><a href="{{.I.URLExterne.String}}" rel="noopener" title="{{.I.URLExterne.String}}">site de l'événement ↗</a></p>{{end}}
+<p class="meta"><b>{{.I.QuandFR}}</b>{{with .I.Lieu}} · {{.}}{{end}}{{if .I.URLExterne.Valid}} · <a href="{{.I.URLExterne.String}}" rel="noopener" title="{{.I.URLExterne.String}}">site ↗</a>{{end}}</p>
+{{if .I.AnnuleeLe.Valid}}<p class="annulee">Annulé.</p>{{end}}
 {{with .I.Description}}<div class="description">{{md .}}</div>{{end}}
 {{if .Ouverte}}
-<p class="jyvais">J'y vais de toute façon — que quelqu'un vienne ou pas.</p>
+<p class="engagement">J'y vais de toute façon.</p>
 {{with .Presences}}<p class="qui">{{.}}</p>{{end}}
 {{with .PrenomsPeutEtre}}<p class="qui">Peut-être : {{joindre . ", "}}.</p>{{end}}
 {{with .AuraitAime}}<p class="qui">{{.}}</p>{{end}}
 {{if .LienSeulement}}<p class="discret">Cette perche n'est pas sur la page de {{.Liste.Titre}} — garde ce lien.</p>{{end}}
 {{else if .Liste.FermeeLe.Valid}}
-<p class="passee">{{.Liste.Titre}} est en retrait pour l'instant.</p>
+<p class="passee">{{.Liste.Titre}} est fermée pour le moment.</p>
 {{else if not .I.AnnuleeLe.Valid}}
 <p class="passee">C'est passé.</p>
 {{end}}
@@ -33,26 +31,26 @@
 <form method="post" action="/i/{{.I.Jeton}}/reponses" class="reponse">
 <fieldset>
 <legend>Si ça te dit</legend>
-<label><input type="radio" name="statut" value="jy_serai" required> j'y serai</label>
-<label><input type="radio" name="statut" value="peut_etre"> peut-être</label>
-<label><input type="radio" name="statut" value="jaurais_aime"> ah zut, j'aurais bien aimé</label>
+<label><input type="radio" name="statut" value="jy_serai" required> J'y serai</label>
+<label><input type="radio" name="statut" value="peut_etre"> Peut-être</label>
+<label><input type="radio" name="statut" value="jaurais_aime"> J'aurais bien aimé</label>
 </fieldset>
 <label class="site" aria-hidden="true">Ne rien écrire ici <input name="verif" tabindex="-1" autocomplete="off"></label>
-<label>Ton prénom
+<label>Prénom
 <input name="prenom" required maxlength="60" autocomplete="given-name"></label>
 <details class="plus">
-<summary>Un mot, un rappel la veille ?</summary>
-<label>Un mot si tu veux — une ligne, lue par {{.Liste.Titre}}, sans suite attendue
+<summary>Un mot, un rappel la veille</summary>
+<label>Un mot — une ligne, lue par {{.Liste.Titre}}
 <input name="mot" maxlength="200"></label>
 <label class="case"><input type="checkbox" name="prenom_visible" value="1" checked>
-mon prénom peut apparaître sur cette page</label>
-<label>E-mail — seulement pour un rappel la veille et si la date ou le lieu change ; effacé un mois après
+Mon prénom peut apparaître sur cette page</label>
+<label>E-mail — pour un rappel la veille et si la date ou le lieu change ; effacé un mois après
 <input name="email" type="email" autocomplete="email"></label>
 </details>
-<button>Déposer ma réponse</button>
-<p class="silence">Et si tu ne réponds pas, c'est très bien aussi. Déjà répondu ? Redonne ton prénom, ça remplacera.</p>
+<button>Répondre</button>
+<p class="silence">Ne pas répondre est aussi une réponse. Redonner son prénom remplace une réponse précédente.</p>
 </form>
 {{end}}
 
-{{if .Ouverte}}<p class="exports"><a href="/i/{{.I.Jeton}}.ics">ajouter à mon calendrier</a></p>{{end}}
+{{if .Ouverte}}<p class="exports"><a href="/i/{{.I.Jeton}}.ics">Ajouter à mon calendrier</a></p>{{end}}
 {{template "pied" .}}

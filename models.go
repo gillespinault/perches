@@ -113,6 +113,51 @@ func (i *Intention) QuandFR() string {
 	return "du " + dateFR(debut, fin.Year() != debut.Year()) + " au " + dateFR(fin, true)
 }
 
+var moisCourtFR = [...]string{"janv.", "févr.", "mars", "avr.", "mai", "juin",
+	"juil.", "août", "sept.", "oct.", "nov.", "déc."}
+var joursCourtFR = [...]string{"dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."}
+
+// JourCourt : « 28 sept. » — la colonne de gauche d'une liste de perches.
+func (i *Intention) JourCourt() string {
+	t, _, err := analyserQuand(i.Quand.String)
+	if !i.Quand.Valid || err != nil {
+		return "à fixer"
+	}
+	s := fmt.Sprintf("%d %s", t.Day(), moisCourtFR[t.Month()-1])
+	if t.Year() != time.Now().Year() {
+		s += fmt.Sprintf(" %d", t.Year())
+	}
+	return s
+}
+
+// Complement : sous le jour — « → 2 oct. » si la perche dure, sinon « demain », ou le jour de
+// la semaine et l'heure (« sam. 10h00 »).
+func (i *Intention) Complement() string {
+	t, avecHeure, err := analyserQuand(i.Quand.String)
+	if !i.Quand.Valid || err != nil {
+		return ""
+	}
+	if i.Fin.Valid {
+		if f, _, err := analyserQuand(i.Fin.String); err == nil {
+			return fmt.Sprintf("→ %d %s", f.Day(), moisCourtFR[f.Month()-1])
+		}
+	}
+	jour := func(x time.Time) time.Time { return time.Date(x.Year(), x.Month(), x.Day(), 0, 0, 0, 0, time.Local) }
+	var s string
+	switch int(jour(t).Sub(jour(time.Now())).Hours() / 24) {
+	case 0:
+		s = "aujourd'hui"
+	case 1:
+		s = "demain"
+	default:
+		s = joursCourtFR[int(t.Weekday())]
+	}
+	if avecHeure {
+		s += fmt.Sprintf(" %dh%02d", t.Hour(), t.Minute())
+	}
+	return s
+}
+
 // dateFR : « lundi 28 septembre », l'année seulement si elle n'est pas celle en cours.
 func dateFR(t time.Time, avecAnnee bool) string {
 	s := fmt.Sprintf("%s %d %s", joursFR[int(t.Weekday())], t.Day(), moisFR[t.Month()-1])

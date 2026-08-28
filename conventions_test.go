@@ -971,7 +971,7 @@ func TestDecision_UneReponseParPrenom(t *testing.T) {
 		t.Fatalf("revenir et redonner son prénom remplace la réponse ; trouvé %d lignes", n)
 	}
 	page := GET(app, rec.Header().Get("Location")).Body.String()
-	if !strings.Contains(page, "Peut-être : léa") || strings.Contains(page, "Seront là") || !strings.Contains(page, "C'est noté") {
+	if !strings.Contains(page, "Peut-être : léa") || strings.Contains(page, "Seront là") || !strings.Contains(page, "Réponse enregistrée") {
 		t.Fatal("la page de la perche montre la réponse à jour et le mot de confirmation")
 	}
 }
@@ -1062,7 +1062,7 @@ func TestDecision_ErreursDansLeGabarit(t *testing.T) {
 		t.Fatalf("une erreur est une page du site avec un retour à l'atelier, reçu %d : %s", rec.Code, body[:min(200, len(body))])
 	}
 	rec = GET(app, "/e/inconnu")
-	if rec.Code != 404 || strings.Contains(rec.Body.String(), "page not found") || !strings.Contains(rec.Body.String(), "atelier") {
+	if rec.Code != 404 || strings.Contains(rec.Body.String(), "page not found") || !strings.Contains(rec.Body.String(), "édition") {
 		t.Fatal("le 404 parle français et oriente vers l'e-mail")
 	}
 	for _, casse := range []string{"/l/Test.", "/l/test/", "/l/TEST"} {
@@ -1115,15 +1115,15 @@ func TestDecision_FermerMaListe(t *testing.T) {
 	listeTest(t, app)
 	i := intentionTest(t, app, dans(1), "KIKK", "page")
 	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "", "anna@exemple.be")
-	if !strings.Contains(GET(app, "/e/edtest/fermer").Body.String(), "en retrait") {
+	if !strings.Contains(GET(app, "/e/edtest/fermer").Body.String(), "fermée") {
 		t.Fatal("fermer passe par une confirmation")
 	}
 	if rec := POST(app, "/e/edtest/fermer", nil); rec.Code != 303 {
 		t.Fatalf("fermer : %d", rec.Code)
 	}
 	page := GET(app, "/l/test").Body.String()
-	if !strings.Contains(page, "En retrait pour l'instant") || strings.Contains(page, "KIKK") || strings.Contains(page, "envies du moment") {
-		t.Fatal("la page publique ne montre plus que « en retrait pour l'instant »")
+	if !strings.Contains(page, "fermée pour le moment") || strings.Contains(page, "KIKK") || strings.Contains(page, "envies du moment") {
+		t.Fatal("la page publique ne montre plus que « fermée pour le moment »")
 	}
 	if rec := POST(app, "/i/"+i.Jeton+"/reponses", url.Values{"prenom": {"Marc"}, "statut": {"jy_serai"}}); rec.Code != 410 {
 		t.Fatalf("une perche d'une liste en retrait ne prend plus de réponse, reçu %d", rec.Code)

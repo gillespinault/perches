@@ -29,8 +29,8 @@ Convention de nommage Go : `TestConvNN_NomParlant`.
 
 - `TestConv02_AucunBoutonNon` [H] — le HTML d'une intention ne contient aucun
   contrôle de refus : les seules valeurs de formulaire pour `statut` sont
-  `jy_serai`, `peut_etre` et `jaurais_aime` (« ah zut, j'aurais bien aimé » — l'envie,
-  pas l'absence ; décision du 28 août 2026).
+  `jy_serai`, `peut_etre` et `jaurais_aime` (« j'aurais bien aimé » — l'envie, pas
+  l'absence ; décision du 28 août 2026).
 - `TestConv02_PostNonRejete` [H] — `POST` avec `statut=non` → 400.
 - `TestConv02_SchemaRefuseLeNon` [S] — `INSERT … statut='non'` → violation de
   CHECK (vérifié le 2026-08-27 sur le schéma).
@@ -117,7 +117,7 @@ Convention de nommage Go : `TestConvNN_NomParlant`.
 - `TestDecision_SansEmailLaPageLeDit` [H] — la confirmation d'une réponse sans
   e-mail contient la mention « revérifie la page avant d'y aller ».
 - `TestDecision_ExportsToujoursDisponibles` [H] — `/l/{slug}.ics`,
-  `/l/{slug}.json` et l'export complet de l'atelier répondent 200 à tout moment.
+  `/l/{slug}.json` et l'export complet de l'édition répondent 200 à tout moment.
 - `TestDecision_IntentionOuverteExigeEcheance` [S] — `quand` NULL sans
   `echeance_decision` → violation de CHECK (vérifié le 2026-08-27).
 - `TestDecision_CodeInvitationRequis` [H] — instance en mode code d'invitation :

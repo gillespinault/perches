@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Les gestes rares et irréversibles de l'atelier passent par une page de confirmation
+// Les gestes rares et irréversibles de l'édition passent par une page de confirmation
 // (décision 2026-08-28) ; les erreurs et les liens cassés parlent la langue du produit.
 
 // erreur : une page dans le gabarit, avec un chemin de retour déduit de l'URL.
@@ -15,7 +15,7 @@ func (app *App) erreur(w http.ResponseWriter, r *http.Request, code int, message
 	p := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	switch {
 	case len(p) >= 2 && p[0] == "e":
-		retour, libelle = "/e/"+p[1], "revenir à l'atelier"
+		retour, libelle = "/e/"+p[1], "revenir à l'édition"
 	case len(p) >= 2 && p[0] == "i":
 		retour, libelle = "/i/"+p[1], "revenir à la perche"
 	case len(p) >= 2 && p[0] == "l":
@@ -29,7 +29,7 @@ func (app *App) erreur(w http.ResponseWriter, r *http.Request, code int, message
 }
 
 // introuvable : un lien abîmé par une messagerie (point final, slash, majuscule) est réparé
-// quand c'est possible ; sinon on le dit en français, avec la clé de secours pour un atelier.
+// quand c'est possible ; sinon on le dit en français, avec la clé de secours pour une édition.
 func (app *App) introuvable(w http.ResponseWriter, r *http.Request) {
 	chemin := r.URL.Path
 	repare := strings.TrimRight(chemin, "./,)»")
@@ -42,7 +42,7 @@ func (app *App) introuvable(w http.ResponseWriter, r *http.Request) {
 	}
 	message := "Ce lien ne mène nulle part — vérifie qu'il est complet."
 	if strings.HasPrefix(chemin, "/e/") {
-		message = "Ce lien n'ouvre aucun atelier — as-tu copié le lien entier ? Ton e-mail peut te le renvoyer depuis l'accueil."
+		message = "Ce lien n'ouvre aucune édition — est-il complet ? Depuis l'accueil, ton e-mail peut le renvoyer."
 	}
 	app.erreur(w, r, http.StatusNotFound, message)
 }
@@ -112,7 +112,7 @@ func (app *App) confirmerEffacement(w http.ResponseWriter, r *http.Request) {
 		app.introuvable(w, r)
 		return
 	}
-	question := "Sa réponse disparaîtra de la page et de ton atelier, sans retour possible. Rien ne lui sera envoyé."
+	question := "Sa réponse disparaîtra de la page et de l'édition, sans retour. Rien ne lui est envoyé."
 	if mot != "" {
 		question = "Son mot — « " + mot + " » — disparaîtra avec. " + question
 	}
@@ -127,8 +127,8 @@ func (app *App) confirmerFermeture(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app.confirmer(w, "Fermer « "+liste.Titre+" » ?",
-		"Ta page dira « en retrait pour l'instant », sans perches ni introduction. Personne n'est prévenu. Ton atelier et ton archive restent, et tu pourras rouvrir quand tu veux.",
-		"/e/"+liste.JetonEdition+"/fermer", "Oui, me mettre en retrait", "/e/"+liste.JetonEdition)
+		"Ta page dira « fermée pour le moment », sans perches ni introduction. Personne n'est prévenu. Tout reste ici, et tu peux rouvrir quand tu veux.",
+		"/e/"+liste.JetonEdition+"/fermer", "Oui, fermer", "/e/"+liste.JetonEdition)
 }
 
 func (app *App) fermerListe(w http.ResponseWriter, r *http.Request) {

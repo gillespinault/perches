@@ -66,8 +66,7 @@ func (app *App) envoyerRappels() {
 		if ra.lieu != "" {
 			corps += " — " + ra.lieu
 		}
-		corps += fmt.Sprintf(".\n\n%s/i/%s\n\nSi finalement tu ne peux pas : rien à faire, le silence vaut « pas cette fois ».",
-			app.baseURL, ra.jetonI)
+		corps += fmt.Sprintf(".\n\n%s/i/%s", app.baseURL, ra.jetonI)
 		app.envoyer(ra.email, "Perches — demain : "+ra.titre, corps, "rappel_veille", ra.reponseID, 0)
 	}
 }

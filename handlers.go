@@ -24,7 +24,7 @@ func (app *App) tropVite(w http.ResponseWriter, r *http.Request) bool {
 	if app.limiteur.Autorise(app.ipDe(r)) {
 		return false
 	}
-	app.erreur(w, r, http.StatusTooManyRequests, "Doucement — réessaie dans une minute.")
+	app.erreur(w, r, http.StatusTooManyRequests, "Trop de demandes — réessaie dans une minute.")
 	return true
 }
 
@@ -57,7 +57,7 @@ func (app *App) envoyer(dest, sujet, corps, typ string, reponseID, listeID int64
 // ---- accueil et création de liste ----
 
 func (app *App) accueil(w http.ResponseWriter, r *http.Request) {
-	// Le navigateur connaît l'atelier : on y va, sans détour par la présentation.
+	// Le navigateur connaît l'édition : on y va, sans détour par la présentation.
 	if c, err := r.Cookie("atelier"); err == nil {
 		if l, err := app.listeParJetonEdition(c.Value); err == nil {
 			http.Redirect(w, r, "/e/"+l.JetonEdition, http.StatusSeeOther)
@@ -82,7 +82,7 @@ func (app *App) accueil(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Le navigateur de l'hôte retient son atelier : taper l'adresse du site suffit
+// Le navigateur de l'hôte retient son édition (le cookie garde son nom historique) : taper l'adresse du site suffit
 // ensuite à y revenir. Cookie côté hôte uniquement — l'invité n'en reçoit jamais.
 func (app *App) retenirAtelier(w http.ResponseWriter, jeton string) {
 	http.SetCookie(w, &http.Cookie{
@@ -115,21 +115,21 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 	}
 	email := emailPlausible(r.FormValue("email"))
 	if email == "" {
-		app.erreur(w, r, http.StatusBadRequest, "Il faut un e-mail : c'est par lui que tu retrouves ton atelier.")
+		app.erreur(w, r, http.StatusBadRequest, "Il faut un e-mail : c'est lui qui renvoie le lien d'édition.")
 		return
 	}
 	if app.politique == "ouverte" {
 		// Sur un autre appareil, « ouvrir ta liste » est souvent une tentative de la retrouver :
-		// si l'e-mail a déjà une liste, on renvoie l'atelier au lieu d'en créer une deuxième.
+		// si l'e-mail a déjà une liste, on renvoie l'édition au lieu d'en créer une deuxième.
 		var l Liste
 		if err := app.db.QueryRow(`SELECT `+colonnesListe+` FROM listes WHERE email = ? ORDER BY cree_le LIMIT 1`, email).
 			Scan(&l.ID, &l.Slug, &l.JetonEdition, &l.Titre, &l.Lettre, &l.Etat, &l.Email, &l.FermeeLe, &l.CreeLe); err == nil {
 			app.enFond(func() {
-				corps := fmt.Sprintf("Ta liste « %s » :\n\nTa page, à partager : %s/l/%s\nTon atelier (ta clé — garde ce lien pour toi) : %s/e/%s\n",
+				corps := fmt.Sprintf("Ta liste « %s » :\n\nTa page, à partager : %s/l/%s\nTon édition (lien secret, garde-le pour toi) : %s/e/%s\n",
 					l.Titre, app.baseURL, l.Slug, app.baseURL, l.JetonEdition)
-				app.envoyer(email, "Perches — ton atelier", corps, "recuperation_lien", 0, l.ID)
+				app.envoyer(email, "Perches — ton lien d'édition", corps, "recuperation_lien", 0, l.ID)
 			})
-			app.erreur(w, r, http.StatusOK, "Cet e-mail a déjà sa liste, « "+l.Titre+" » — le lien de ton atelier vient de repartir par e-mail.")
+			app.erreur(w, r, http.StatusOK, "Cet e-mail a déjà sa liste, « "+l.Titre+" » — le lien d'édition vient de repartir par e-mail.")
 			return
 		}
 	}
@@ -175,9 +175,9 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if email != "" {
-		corps := fmt.Sprintf("Ta liste « %s » est ouverte.\n\nTa page, à partager : %s/l/%s\nTon atelier (ta clé — garde ce lien pour toi) : %s/e/%s\n",
+		corps := fmt.Sprintf("Ta liste « %s » est ouverte.\n\nTa page, à partager : %s/l/%s\nTon édition (lien secret, garde-le pour toi) : %s/e/%s\n",
 			titre, app.baseURL, slug, app.baseURL, je)
-		app.envoyer(email, "Perches — ton atelier", corps, "recuperation_lien", 0, listeID)
+		app.envoyer(email, "Perches — ton lien d'édition", corps, "recuperation_lien", 0, listeID)
 	}
 	http.Redirect(w, r, "/e/"+je+"?bienvenue=1", http.StatusSeeOther)
 }
@@ -201,15 +201,15 @@ func (app *App) recupererLien(w http.ResponseWriter, r *http.Request) {
 		}
 		app.enFond(func() {
 			for _, l := range listes {
-				corps := fmt.Sprintf("Ta liste « %s » :\n\nTa page, à partager : %s/l/%s\nTon atelier (ta clé — garde ce lien pour toi) : %s/e/%s\n",
+				corps := fmt.Sprintf("Ta liste « %s » :\n\nTa page, à partager : %s/l/%s\nTon édition (lien secret, garde-le pour toi) : %s/e/%s\n",
 					l.Titre, app.baseURL, l.Slug, app.baseURL, l.JetonEdition)
-				app.envoyer(email, "Perches — ton atelier", corps, "recuperation_lien", 0, l.ID)
+				app.envoyer(email, "Perches — ton lien d'édition", corps, "recuperation_lien", 0, l.ID)
 			}
 		})
 	}
 	app.rendre(w, "message.html", map[string]any{
 		"TitrePage": "Perches",
-		"Message":   "Si cet e-mail est connu ici, le lien de ton atelier vient de partir.",
+		"Message":   "Si cet e-mail est connu ici, le lien d'édition vient de partir.",
 	})
 }
 
@@ -273,9 +273,9 @@ func descriptionOG(lettre string, nbPerches int) string {
 	case 0:
 		return "Une liste d'intentions, sans obligation."
 	case 1:
-		return "Une perche tendue — une liste d'intentions, sans obligation."
+		return "Une perche — une liste d'intentions, sans obligation."
 	}
-	return fmt.Sprintf("%d perches tendues — une liste d'intentions, sans obligation.", nbPerches)
+	return fmt.Sprintf("%d perches — une liste d'intentions, sans obligation.", nbPerches)
 }
 
 func couper(s string, n int) string {
@@ -392,7 +392,7 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if intention.AnnuleeLe.Valid || intention.Passee() || liste.FermeeLe.Valid {
-		app.erreur(w, r, http.StatusGone, "C'est passé — cette page ne prend plus de réponse.")
+		app.erreur(w, r, http.StatusGone, "Cette perche ne prend plus de réponse.")
 		return
 	}
 	prenom := strings.TrimSpace(r.FormValue("prenom"))
@@ -400,7 +400,7 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 	mot := strings.TrimSpace(r.FormValue("mot"))
 	email := emailPlausible(r.FormValue("email"))
 	if prenom == "" || len([]rune(prenom)) > 60 {
-		app.erreur(w, r, http.StatusBadRequest, "Un prénom suffit — mais il en faut un.")
+		app.erreur(w, r, http.StatusBadRequest, "Il faut un prénom.")
 		return
 	}
 	if statut != "jy_serai" && statut != "peut_etre" && statut != "jaurais_aime" {
@@ -420,7 +420,7 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 	var n int
 	app.db.QueryRow(`SELECT count(*) FROM reponses WHERE intention_id = ?`, intention.ID).Scan(&n)
 	if n >= plafondReponses {
-		app.erreur(w, r, http.StatusForbidden, "Cette perche a reçu plus de réponses qu'elle n'en attendait — écris directement à la personne.")
+		app.erreur(w, r, http.StatusForbidden, "Cette perche a atteint son nombre maximal de réponses — écris directement à la personne.")
 		return
 	}
 	if email != "" {
@@ -487,7 +487,7 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	app.rendre(w, "edition.html", map[string]any{
-		"TitrePage":     liste.Titre + " — atelier",
+		"TitrePage":     liste.Titre + " — édition",
 		"Liste":         liste,
 		"AVenir":        aVenir,
 		"Passees":       passees,
@@ -542,7 +542,7 @@ func (app *App) majListe(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=lettre#lettre", http.StatusSeeOther)
 }
 
-// reglages : titre, adresse, e-mail — ce qui change rarement, et se relit en pied d'atelier.
+// reglages : titre, adresse, e-mail — ce qui change rarement, et se relit en pied d'édition.
 func (app *App) reglages(w http.ResponseWriter, r *http.Request) {
 	if app.tropVite(w, r) {
 		return
@@ -601,7 +601,7 @@ func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
 	}
 	titre := strings.TrimSpace(r.FormValue("titre"))
 	if titre == "" {
-		app.erreur(w, r, http.StatusBadRequest, "Il manque le « quoi » : en quelques mots, ce que tu vas faire.")
+		app.erreur(w, r, http.StatusBadRequest, "Il faut un titre : ce que tu vas faire, en quelques mots.")
 		return
 	}
 	if msg := champsIntentionTropLongs(r); msg != "" {
@@ -668,7 +668,7 @@ func (app *App) notifierLogistique(intentionID int64, sujet, message string) {
 			dests = append(dests, d)
 		}
 	}
-	corps := message + "\n\nRien ne t'est demandé."
+	corps := message
 	app.enFond(func() {
 		for _, d := range dests {
 			app.envoyer(d.email, "Perches — "+sujet, corps, "logistique", d.id, 0)
@@ -682,7 +682,7 @@ const plafondReponses = 200
 func champsIntentionTropLongs(r *http.Request) string {
 	switch {
 	case !borne(r.FormValue("titre"), 120):
-		return "Le « quoi » tient en 120 caractères."
+		return "Le titre tient en 120 caractères."
 	case !borne(r.FormValue("lieu"), 120):
 		return "Le lieu tient en 120 caractères."
 	case !borne(r.FormValue("description"), 5000):
@@ -729,7 +729,7 @@ func (app *App) majIntention(w http.ResponseWriter, r *http.Request) {
 	}
 	titre := strings.TrimSpace(r.FormValue("titre"))
 	if titre == "" {
-		app.erreur(w, r, http.StatusBadRequest, "Il manque le « quoi » : en quelques mots, ce que tu vas faire.")
+		app.erreur(w, r, http.StatusBadRequest, "Il faut un titre : ce que tu vas faire, en quelques mots.")
 		return
 	}
 	lieu := strings.TrimSpace(r.FormValue("lieu"))

@@ -8,9 +8,10 @@ de répondre d'un geste : sans compte, sans application, sans négociation, sans
 silence soit un refus.
 
 **Statut : v0, en service** (perches.robotsinlove.be, août 2026). Le geste de base
-fonctionne : liste, perches datées, trois réponses, rappels, courriels logistiques,
-exports ICS/JSON, atelier avec confirmations et archive. Relu par une revue croisée
-(hôte, invité, sécurité, produit) le 28 août 2026 ; tout ce qu'elle a trouvé est traité.
+fonctionne : liste, perches datées (un jour ou plusieurs), trois réponses, rappels,
+courriels logistiques, exports ICS/JSON, édition avec confirmations et archive. Relu par
+une revue croisée (hôte, invité, sécurité, produit) le 28 août 2026, puis repris dans une
+seconde passe le même jour : typographie, mise en page, ton de l'interface.
 La variante « à fixer » et les croisements viendront — ou pas — plus tard.
 Ce projet est maintenu par intermittence ; le silence vaut « pas maintenant ».
 
@@ -21,10 +22,10 @@ viendra plus tard), éventuellement un dernier jour si elle dure, un lieu, et la
 « j'y vais de toute façon ». Ce qui la distingue d'une invitation :
 
 - **Elle ne demande rien.** Aucune réponse n'est attendue ; le silence vaut « pas cette fois ».
-- **Elle n'a pas de négatif.** On peut dire « j'y serai », « peut-être » ou « ah zut, j'aurais bien aimé » — cette dernière dit l'envie, pas l'absence. Il n'existe pas de bouton « non » — ni pour l'invité (aucun refus à formuler), ni pour l'hôte (aucun refus à lire).
+- **Elle n'a pas de négatif.** On peut dire « j'y serai », « peut-être » ou « j'aurais bien aimé » — cette dernière dit l'envie, pas l'absence. Il n'existe pas de bouton « non » — ni pour l'invité (aucun refus à formuler), ni pour l'hôte (aucun refus à lire).
 - **Elle est bornée.** Une date — ou un premier et un dernier jour. Elle se termine d'elle-même.
 - **Elle est asymétrique et l'assume.** L'hôte y va de toute façon ; l'invité s'ajoute ou non. Personne ne dépend de personne.
-- **Elle porte son mode d'emploi.** Les conventions sont affichées par l'outil, pas par la personne.
+- **Elle porte son mode d'emploi.** Les conventions sont affichées par l'outil, pas par la personne — en une phrase, sans commentaire.
 
 ## Les conventions
 
@@ -32,7 +33,7 @@ Elles sont le produit ; tout le reste est de la plomberie. Elles vivent dans la
 structure — boutons, champs, absence de champs — et sont encodées en tests.
 
 1. Le silence vaut « pas cette fois ».
-2. Aucun signal négatif n'existe dans le système. Trois réponses — « j'y serai », « peut-être », « ah zut, j'aurais bien aimé » — et aucune n'est un refus.
+2. Aucun signal négatif n'existe dans le système. Trois réponses — « j'y serai », « peut-être », « j'aurais bien aimé » — et aucune n'est un refus.
 3. Pas de fil de discussion. Au plus une ligne, lue, sans réponse attendue.
 4. *Retirée le 28 août 2026.* Une perche ne compte pas les places : un nombre serait déjà une manière de dire non.
 5. « J'y vais de toute façon » — toujours, sans option.
@@ -45,18 +46,17 @@ structure — boutons, champs, absence de champs — et sont encodées en tests.
 
 ## Comment ça marche
 
-**L'hôte** ouvre sa liste (un titre, son e-mail) et arrive dans son *atelier* — une
-page dans sa voix : une introduction en Markdown de lettre (paragraphes, gras,
-italique, listes, liens), puis des perches. L'atelier est identifié par un lien secret,
-sa clé — pas de compte, pas de mot de passe ; son navigateur s'en souvient, son e-mail
-le lui renvoie. Il partage sa page ou une seule perche là où ses amis sont déjà
-(WhatsApp, Signal, e-mail…) ; le lien s'affiche sous forme de carte. Il consulte son
-atelier quand il veut ; rien ne le notifie. Il peut corriger une perche, l'annuler (et
-la rétablir), effacer une réponse — chaque geste irréversible se confirme — et mettre
-sa liste en retrait.
+**L'hôte** ouvre sa liste (un titre, son e-mail) et arrive sur son *édition* — une page
+dans sa voix : une introduction en Markdown de lettre (paragraphes, gras, italique,
+listes, liens), puis des perches. L'édition est identifiée par un lien secret — pas de
+compte, pas de mot de passe ; son navigateur s'en souvient, son e-mail le lui renvoie.
+Il partage sa page ou une seule perche là où ses amis sont déjà (WhatsApp, Signal,
+e-mail…) ; le lien s'affiche sous forme de carte. Il consulte son édition quand il veut ;
+rien ne le notifie. Il peut modifier une perche, l'annuler (et la rétablir), effacer une
+réponse — chaque geste irréversible se confirme — et fermer sa liste.
 
-**L'invité** ouvre le lien, lit, choisit « j'y serai », « peut-être » ou « ah zut, j'aurais bien aimé », donne un prénom.
-Il peut laisser une ligne, lue par l'hôte, sans réponse attendue — l'outil le dit.
+**L'invité** ouvre le lien, lit, choisit « j'y serai », « peut-être » ou « j'aurais bien aimé », donne un prénom.
+Il peut laisser une ligne, lue par l'hôte, sans réponse attendue.
 Optionnel : un e-mail pour le rappel de la veille et les changements logistiques, et
 un fichier calendrier. Rien d'autre.
 
@@ -84,7 +84,8 @@ presque pas de JavaScript** (un bouton « copier » et l'aperçu de l'adresse, e
 amélioration progressive). Identité de l'hôte = lien secret d'édition, que son e-mail
 (demandé à l'ouverture) permet de retrouver ; cookie côté hôte seulement. Politique
 d'instance au choix : création de listes ouverte, sur invitation (un hôte peut inviter
-depuis son atelier), ou fermée. Garde-fous : corps et champs bornés, limite de débit,
+depuis son édition), ou fermée. Deux polices auto-hébergées (Newsreader pour ce que
+l'hôte écrit, Instrument Sans pour ce que l'outil affiche), aucune requête externe. Garde-fous : corps et champs bornés, limite de débit,
 pot de miel, en-têtes de sécurité et CSP, e-mails des invités purgés après un mois.
 
 Les choix d'architecture sont notés dans [DECISIONS.md](DECISIONS.md), une ligne datée
