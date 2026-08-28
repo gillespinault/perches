@@ -1159,6 +1159,31 @@ func TestDecision_AtelierStable(t *testing.T) {
 	}
 }
 
+func TestDecision_MarkdownDeLettre(t *testing.T) {
+	cas := map[string]string{
+		"Bonjour,\nça va **bien**.":              "<p>Bonjour,<br>ça va <strong>bien</strong>.</p>",
+		"- expo\n- ciné":                         "<ul><li>expo</li><li>ciné</li></ul>",
+		"voir [le site](https://kikk.be) !":      `<p>voir <a href="https://kikk.be" rel="noopener">le site</a> !</p>`,
+		"<script>alert(1)</script> *doux*":       "<p>&lt;script&gt;alert(1)&lt;/script&gt; <em>doux</em></p>",
+		"[x](javascript:alert(1))":               "<p>[x](javascript:alert(1))</p>",
+		"https://perches.example/l/gilles voilà": `<p><a href="https://perches.example/l/gilles" rel="noopener">https://perches.example/l/gilles</a> voilà</p>`,
+	}
+	for src, attendu := range cas {
+		if got := strings.TrimSpace(string(rendreMarkdown(src))); got != attendu {
+			t.Errorf("md(%q)\n  = %s\n  ≠ %s", src, got, attendu)
+		}
+	}
+	if s := sansMarkdown("**Bonjour** [ami](https://x.y)"); s != "Bonjour ami" {
+		t.Errorf("sansMarkdown : %q", s)
+	}
+	app, _ := appTest(t)
+	listeTest(t, app)
+	app.db.Exec(`UPDATE listes SET lettre = '**Salut** à tous' WHERE slug = 'test'`)
+	if page := GET(app, "/l/test").Body.String(); !strings.Contains(page, "<strong>Salut</strong>") {
+		t.Fatal("la page rend le Markdown de l'introduction")
+	}
+}
+
 // ---- hors périmètre : le test d'absence ----
 
 func TestHorsPerimetre_LeSchemaResteMaigre(t *testing.T) {

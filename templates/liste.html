@@ -1,15 +1,16 @@
 {{template "entete" .}}
 <h1>{{.Liste.Titre}}</h1>
 {{if .Liste.FermeeLe.Valid}}<p class="etat">En retrait pour l'instant.</p>{{else}}
-{{with .Liste.Lettre}}<div class="lettre">{{.}}</div>{{end}}
+{{with .Liste.Lettre}}<div class="lettre">{{md .}}</div>{{end}}
 {{end}}
-<section class="intentions">
+<section class="intentions cartes">
 {{range .Intentions}}
-<article>
-<h2><a href="/i/{{.Jeton}}">{{.Titre}}</a></h2>
-<p class="quand">{{quandfr .Quand}}{{with .Lieu}} — {{.}}{{end}}</p>
-<p class="geste"><a href="/i/{{.Jeton}}">si ça te dit →</a></p>
-</article>
+<a class="carte" href="/i/{{.Jeton}}">
+<span class="quand">{{quandfr .Quand}}</span>
+<span class="titre">{{.Titre}}</span>
+{{with .Lieu}}<span class="lieu">{{.}}</span>{{end}}
+<span class="geste">si ça te dit →</span>
+</a>
 {{else}}
 {{if not .Liste.FermeeLe.Valid}}<p class="vide">Rien d'annoncé pour l'instant.</p>{{end}}
 {{end}}

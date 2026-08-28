@@ -130,6 +130,7 @@ func quandFR(q sql.NullString) string {
 var fonctionsTpl = template.FuncMap{
 	"quandfr": quandFR,
 	"joindre": strings.Join,
+	"md":      rendreMarkdown,
 	"datede": func(q sql.NullString) string {
 		if !q.Valid {
 			return ""

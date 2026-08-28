@@ -33,8 +33,10 @@ a { color: var(--accent); }
 
 .citation { font-style: italic; color: var(--doux); }
 .etat { color: var(--accent); font-style: italic; margin-top: -.5rem; }
-.lettre { white-space: pre-line; margin: 1.2rem 0 2rem; }
-.description { white-space: pre-line; margin: 1rem 0; }
+.lettre { margin: 1.2rem 0 2rem; }
+.lettre p, .description p { margin: 0 0 .9rem; }
+.lettre ul, .description ul { margin: 0 0 .9rem; padding-left: 1.3rem; }
+.description { margin: 1rem 0; }
 .quand { color: var(--doux); margin: .1rem 0; }
 .jyvais { font-style: italic; color: var(--doux); }
 .capacite, .qui { color: var(--doux); }
@@ -166,3 +168,15 @@ details.plus summary { color: var(--doux); }
 .sobre-lien { margin-left: 1rem; color: var(--doux); }
 .exports form { display: inline; }
 .exports p { margin: .3rem 0 0; }
+
+/* Perches en cartes */
+.cartes { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); margin: 1.5rem 0; }
+.carte { display: flex; flex-direction: column; gap: .2rem; padding: 1rem 1.1rem 1.5rem; border: 1px solid var(--trait); border-radius: 10px; background: #fffcf6; color: var(--encre); text-decoration: none; position: relative; transition: border-color .15s, transform .15s; }
+.carte:hover, .carte:focus-visible { border-color: var(--accent); transform: translateY(-1px); }
+.carte .quand { font-size: .9rem; color: var(--accent); }
+.carte .titre { font-size: 1.25rem; line-height: 1.25; }
+.carte .lieu { color: var(--doux); font-size: .95rem; }
+.carte .geste { position: absolute; right: 1.1rem; bottom: .7rem; font-size: .85rem; color: var(--doux); }
+.marque { width: 1.1em; height: 1.1em; vertical-align: -.2em; border-radius: 4px; }
+.marque.grande { width: 1em; height: 1em; vertical-align: -.1em; margin-right: .1em; }
+@media (prefers-reduced-motion: reduce) { .carte { transition: none; } }

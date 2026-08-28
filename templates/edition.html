@@ -25,7 +25,7 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 {{if eq .OK "lettre"}}<p class="ok">Enregistré — <a href="/l/{{.Liste.Slug}}" target="_blank" rel="noopener">voir ma page</a>.</p>{{end}}
 <p class="discret">Elle ouvre ta page, juste sous le titre, telle quelle, et accompagne chaque perche.</p>
 <form method="post" action="/e/{{.Liste.JetonEdition}}">
-<label>Texte brut : les sauts de ligne sont gardés, rien d'autre
+<label>Les sauts de ligne sont gardés ; **gras**, *italique*, listes avec « - », liens [ainsi](https://…) — rien d'autre
 <textarea name="lettre" rows="{{if .Liste.Lettre}}5{{else}}8{{end}}" placeholder="Bonjour,&#10;voici les envies du moment…">{{.Liste.Lettre}}</textarea></label>
 <button>Enregistrer</button>
 </form>
@@ -86,7 +86,7 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 <label>Quoi <input name="titre" required maxlength="120" placeholder="Balade au parc, ciné, expo…"></label>
 <label>Quand — l'heure est optionnelle <span class="enligne-champs"><input type="date" name="date" required> <input type="time" name="heure"></span></label>
 <label>Où <input name="lieu" placeholder="optionnel"></label>
-<label>Quelques mots <textarea name="description" rows="3" placeholder="optionnel — le contexte, l'envie, ce qu'il faut savoir"></textarea></label>
+<label>Quelques mots <textarea name="description" rows="3" placeholder="optionnel — le contexte, l'envie, ce qu'il faut savoir ; **gras**, liens et listes acceptés"></textarea></label>
 <details>
 <summary>Plus d'options</summary>
 <label>Lien externe (l'expo, le festival…) <input name="url_externe" type="url"></label>

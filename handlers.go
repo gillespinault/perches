@@ -252,7 +252,7 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 	default:
 		app.rendre(w, "liste.html", map[string]any{
 			"TitrePage":  liste.Titre,
-			"OG":         app.og(liste.Titre, descriptionOG(liste.Lettre, len(intentions)), "/l/"+liste.Slug),
+			"OG":         app.og(liste.Titre, descriptionOG(sansMarkdown(liste.Lettre), len(intentions)), "/l/"+liste.Slug),
 			"Alternate":  app.baseURL + "/l/" + liste.Slug + ".json",
 			"Liste":      liste,
 			"Intentions": intentions,
@@ -380,7 +380,7 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 		"PrenomsPeutEtre":  peutEtre,
 		"AuraitAime":       phraseAuraitAime(auraitAime),
 		"LienSeulement":    intention.Visibilite == "lien",
-		"Voix":             couper(strings.TrimSpace(liste.Lettre), 280),
+		"Voix":             couper(strings.TrimSpace(sansMarkdown(liste.Lettre)), 280),
 		"Merci":            merci,
 		"FormulaireOuvert": ouverte,
 	})

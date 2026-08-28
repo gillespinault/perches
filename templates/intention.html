@@ -13,7 +13,7 @@
 <p class="quand">{{quandfr .I.Quand}}{{with .I.Lieu}} — {{.}}{{end}}</p>
 {{if .I.AnnuleeLe.Valid}}<p class="annulee">C'est annulé.</p>{{end}}
 {{if .I.URLExterne.Valid}}<p class="lien-externe"><a href="{{.I.URLExterne.String}}" rel="noopener" title="{{.I.URLExterne.String}}">site de l'événement ↗</a></p>{{end}}
-{{with .I.Description}}<div class="description">{{.}}</div>{{end}}
+{{with .I.Description}}<div class="description">{{md .}}</div>{{end}}
 {{if .Ouverte}}
 <p class="jyvais">J'y vais de toute façon — que quelqu'un vienne ou pas.</p>
 {{if .Presences}}<p class="qui">{{.Presences}}</p>{{else if .I.Capacite.Valid}}<p class="capacite">Capacité indicative : {{.I.Capacite.Int64}}.</p>{{end}}
