@@ -20,8 +20,9 @@ type VuePerche struct {
 	PeutEtre    []string
 	AuraitAime  string
 	Merci       map[string]any
-	DepuisListe bool // le formulaire ramène à la liste, carte ouverte
-	Ouvrir      bool // la carte s'ouvre d'elle-même (après une réponse)
+	DepuisListe bool   // le formulaire ramène à la liste, carte ouverte
+	Ouvrir      bool   // la carte s'ouvre d'elle-même (après une réponse)
+	Hote        string // jeton d'édition si le lecteur est l'hôte — liens « Modifier », « Tendre la perche »
 }
 
 func (app *App) vuePerche(i *Intention, liste *Liste, merci map[string]any, depuisListe bool) VuePerche {

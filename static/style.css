@@ -111,6 +111,11 @@ a { color: var(--bois); text-decoration-thickness: 1px; text-underline-offset: .
 .marque { width: 1.05rem; height: 1.05rem; border-radius: 4px; }
 .marque.grande { width: 1em; height: 1em; vertical-align: -.1em; margin-right: .1em; }
 
+/* la barre d'hôte : visible seulement du navigateur qui connaît l'édition */
+.hote { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; font-family: var(--sans); font-size: .8rem; color: var(--doux); margin: -1rem 0 1.4rem; padding-bottom: .6rem; border-bottom: 1px dashed var(--trait); }
+.hote a { color: var(--encre); font-weight: 500; }
+.hote-lien { color: var(--encre) !important; font-weight: 500; }
+
 /* la lettre et la description : la voix de l'hôte */
 .lettre { margin: 1.2rem 0 2rem; }
 .lettre p, .description p { margin: 0 0 .9rem; }

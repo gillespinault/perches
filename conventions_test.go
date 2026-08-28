@@ -79,6 +79,21 @@ func intentionTest(t *testing.T, app *App, quand, titre, visibilite string) *Int
 	return i
 }
 
+func repereTest(t *testing.T, app *App, quand, titre string) *Intention {
+	t.Helper()
+	compteurJeton++
+	j := fmt.Sprintf("jetontest%d", compteurJeton)
+	if _, err := app.db.Exec(`INSERT INTO intentions (liste_id, jeton, titre, description, quand, lieu, visibilite)
+		VALUES (1, ?, ?, 'Repéré, à voir.', ?, 'Namur', 'page')`, j, titre, quand); err != nil {
+		t.Fatal(err)
+	}
+	i, _, err := app.intentionParJeton(j)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return i
+}
+
 func GET(app *App, chemin string) *httptest.ResponseRecorder {
 	rec := httptest.NewRecorder()
 	app.handler().ServeHTTP(rec, httptest.NewRequest("GET", chemin, nil))
@@ -1463,5 +1478,45 @@ func TestDecision_ToutDuLongSuitLEvenement(t *testing.T) {
 	q, f := i.DatesPerche()
 	if q.String != dans(4) || f.String != dans(6) || i.Quand.String != dans(1) || i.PercheAuxDatesDeLEvenement() {
 		t.Fatalf("des dates propres ne bougent pas : perche %q→%q, événement %q→%q", q.String, f.String, i.Quand.String, i.Fin.String)
+	}
+}
+
+func TestDecision_BarreDHoteSurLesPagesPubliques(t *testing.T) {
+	// Le navigateur de l'hôte (cookie « atelier ») voit, sur sa page et ses perches, des liens vers
+	// l'édition ouverte sur le bon événement. Personne d'autre ne voit le moindre lien /e/.
+	app, _ := appTest(t)
+	listeTest(t, app)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
+	r := repereTest(t, app, dans(5), "Expo")
+	for _, chemin := range []string{"/l/test", "/i/" + i.Jeton, "/i/" + r.Jeton} {
+		if strings.Contains(GET(app, chemin).Body.String(), "/e/") {
+			t.Fatalf("%s : un lecteur sans cookie ne doit jamais voir de lien d'édition", chemin)
+		}
+	}
+	hote := func(chemin string) string {
+		req := httptest.NewRequest("GET", chemin, nil)
+		req.AddCookie(&http.Cookie{Name: "atelier", Value: "edtest"})
+		w := httptest.NewRecorder()
+		app.handler().ServeHTTP(w, req)
+		return w.Body.String()
+	}
+	page := hote("/l/test")
+	if !strings.Contains(page, `class="hote"`) || !strings.Contains(page, fmt.Sprintf(`href="/e/edtest?modifier=%d#perche-%d"`, i.ID, i.ID)) || !strings.Contains(page, fmt.Sprintf(`href="/e/edtest?tendre=%d#perche-%d"`, r.ID, r.ID)) {
+		t.Fatal("l'hôte voit la barre et, par carte, « Modifier » — et « Tendre la perche » sur un repéré")
+	}
+	if strings.Contains(hote("/i/"+i.Jeton), "Tendre la perche") || !strings.Contains(hote("/i/"+r.Jeton), "Tendre la perche") {
+		t.Fatal("« Tendre la perche » seulement sur un repéré")
+	}
+	autre := httptest.NewRequest("GET", "/l/test", nil)
+	autre.AddCookie(&http.Cookie{Name: "atelier", Value: "un-autre-jeton"})
+	w := httptest.NewRecorder()
+	app.handler().ServeHTTP(w, autre)
+	if strings.Contains(w.Body.String(), "/e/") {
+		t.Fatal("le cookie d'une autre liste ne donne rien ici")
+	}
+	edition := GET(app, fmt.Sprintf("/e/edtest?modifier=%d", i.ID)).Body.String()
+	if !strings.Contains(edition, `<details open>
+<summary>Modifier l'événement</summary>`) {
+		t.Fatal("l'édition ouvre le formulaire demandé")
 	}
 }

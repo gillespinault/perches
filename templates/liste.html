@@ -1,4 +1,5 @@
 {{template "entete" .}}
+{{with .Hote}}<p class="hote"><span>Ta page, telle que tes amis la voient.</span> <a href="/e/{{.}}">Édition</a></p>{{end}}
 <p class="marque-page"><img src="/static/logo.svg" alt="" class="marque"> Perches</p>
 <h1>{{.Liste.Titre}}</h1>
 {{if .Liste.FermeeLe.Valid}}<p class="etat">Liste fermée pour le moment.</p>{{else}}

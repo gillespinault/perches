@@ -85,6 +85,15 @@ func (app *App) accueil(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// hoteDe : le jeton d'édition si le navigateur est celui de l'hôte de cette liste — la page
+// publique lui montre alors une barre d'hôte (liens vers l'édition), invisible pour tout autre.
+func (app *App) hoteDe(r *http.Request, liste *Liste) string {
+	if c, err := r.Cookie("atelier"); err == nil && c.Value == liste.JetonEdition {
+		return liste.JetonEdition
+	}
+	return ""
+}
+
 // Le navigateur de l'hôte retient son édition (le cookie garde son nom historique) : taper l'adresse du site suffit
 // ensuite à y revenir. Cookie côté hôte uniquement — l'invité n'en reçoit jamais.
 func (app *App) retenirAtelier(w http.ResponseWriter, jeton string) {
@@ -265,7 +274,9 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 			if intentions[k].Tendue() {
 				nbPerches++
 			}
-			vues = append(vues, app.vuePerche(&intentions[k], liste, m, true))
+			v := app.vuePerche(&intentions[k], liste, m, true)
+			v.Hote = app.hoteDe(r, liste)
+			vues = append(vues, v)
 		}
 		app.rendre(w, r, "liste.html", map[string]any{
 			"TitrePage": liste.Titre,
@@ -275,6 +286,7 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 			"Perches":   vues,
 			"NbPerches": nbPerches,
 			"Filtre":    filtre,
+			"Hote":      app.hoteDe(r, liste),
 		})
 	}
 }
@@ -353,6 +365,7 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := app.vuePerche(intention, liste, merciDe(r), false)
+	v.Hote = app.hoteDe(r, liste)
 	if liste.FermeeLe.Valid {
 		liste.Lettre = ""
 	}
@@ -367,6 +380,7 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 		"V":             v,
 		"LienSeulement": intention.Visibilite == "lien",
 		"Voix":          couper(strings.TrimSpace(sansMarkdown(liste.Lettre)), 280),
+		"Hote":          app.hoteDe(r, liste),
 	})
 }
 
@@ -496,6 +510,8 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 		"Invitation":    r.URL.Query().Get("invitation"),
 		"Politique":     app.politique,
 		"OK":            r.URL.Query().Get("ok"),
+		"Modifier":      r.URL.Query().Get("modifier"), // depuis la page publique : ce formulaire s'ouvre
+		"Tendre":        r.URL.Query().Get("tendre"),
 	})
 }
 

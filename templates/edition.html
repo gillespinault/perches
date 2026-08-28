@@ -87,7 +87,7 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 {{else}}
 {{if .Reponses}}<p class="discret">Réponses reçues quand la perche était tendue :</p>
 <ul class="reponses">{{range .Reponses}}<li>{{.Prenom}} — {{template "statut" .Statut}}{{with .Mot}} · « {{.}} »{{end}}</li>{{end}}</ul>{{end}}
-<details>
+<details{{if eq $.Tendre (printf "%d" .ID)}} open{{end}}>
 <summary class="tendre">Tendre la perche</summary>
 <form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/perche">
 <label>Quand j'y vais — par défaut, les dates de l'événement <span class="enligne-champs"><input type="date" name="perche_date" value="{{datede .Quand}}" required> <input type="time" name="perche_heure" value="{{heurede .Quand}}"></span></label>
@@ -96,7 +96,7 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 </form>
 </details>
 {{end}}
-<details>
+<details{{if eq $.Modifier (printf "%d" .ID)}} open{{end}}>
 <summary>Modifier l'événement</summary>
 <form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/maj">
 <label>Quoi <input name="titre" required maxlength="120" value="{{.Titre}}"></label>

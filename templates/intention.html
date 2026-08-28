@@ -1,4 +1,5 @@
 {{template "entete" .}}
+{{with .Hote}}<p class="hote"><span>Telle que tes amis la voient.</span> <a href="/e/{{.}}?modifier={{$.V.I.ID}}#perche-{{$.V.I.ID}}">Modifier</a>{{if not $.V.Tendue}} <a href="/e/{{.}}?tendre={{$.V.I.ID}}#perche-{{$.V.I.ID}}">Tendre la perche</a>{{end}}</p>{{end}}
 <p class="fil"><a href="/l/{{.Liste.Slug}}">{{.Liste.Titre}}</a></p>
 <h1>{{.V.I.Titre}}</h1>
 {{template "perche-meta" .V.I}}

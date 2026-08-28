@@ -64,7 +64,7 @@ Mon prénom peut apparaître sur cette page</label>
 <div class="corps">
 {{template "perche-meta" .I}}
 {{template "perche-corps" .}}
-<p class="exports"><a href="/i/{{.I.Jeton}}">Cette page seule ↗</a> <a href="/i/{{.I.Jeton}}.ics">Ajouter à mon calendrier</a></p>
+<p class="exports"><a href="/i/{{.I.Jeton}}">Cette page seule ↗</a> <a href="/i/{{.I.Jeton}}.ics">Ajouter à mon calendrier</a>{{with .Hote}} <a class="hote-lien" href="/e/{{.}}?modifier={{$.I.ID}}#perche-{{$.I.ID}}">Modifier</a>{{if not $.Tendue}} <a class="hote-lien" href="/e/{{.}}?tendre={{$.I.ID}}#perche-{{$.I.ID}}">Tendre la perche</a>{{end}}{{end}}</p>
 </div>
 </details>
 {{end}}
