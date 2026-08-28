@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"mime"
 	"net/smtp"
 	"os"
 )
@@ -24,8 +25,9 @@ type MailerSMTP struct {
 }
 
 func (m MailerSMTP) Envoyer(dest, sujet, corps string) error {
-	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n%s",
-		m.de, dest, sujet, corps)
+	// En-tête From avec nom d'affichage ; enveloppe SMTP avec l'adresse nue.
+	msg := fmt.Sprintf("From: Perches <%s>\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n%s",
+		m.de, dest, mime.QEncoding.Encode("utf-8", sujet), corps)
 	var auth smtp.Auth
 	if m.utilisateur != "" {
 		auth = smtp.PlainAuth("", m.utilisateur, m.mdp, m.hote)

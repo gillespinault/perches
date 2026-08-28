@@ -621,6 +621,29 @@ func TestDecision_MigrationTroisiemeStatut(t *testing.T) {
 	}
 }
 
+func TestDecision_LeNavigateurDeLHoteRetientSonAtelier(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	rec := GET(app, "/e/edtest")
+	cookies := rec.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Name != "atelier" || cookies[0].Value != "edtest" || !cookies[0].HttpOnly {
+		t.Fatalf("l'atelier pose un cookie HttpOnly « atelier », reçu %v", cookies)
+	}
+	req := httptest.NewRequest("GET", "/", nil)
+	req.AddCookie(cookies[0])
+	w := httptest.NewRecorder()
+	app.routes().ServeHTTP(w, req)
+	if !strings.Contains(w.Body.String(), "Les perches de Test") || !strings.Contains(w.Body.String(), "/e/edtest") {
+		t.Fatal("l'accueil mène à l'atelier retenu")
+	}
+	if GET(app, "/").Header().Get("Set-Cookie") != "" || GET(app, "/l/test").Header().Get("Set-Cookie") != "" {
+		t.Fatal("hors de l'atelier, aucune page ne pose de cookie")
+	}
+	if rec := POST(app, "/oublier", nil); rec.Code != 303 || !strings.Contains(rec.Header().Get("Set-Cookie"), "Max-Age=0") {
+		t.Fatal("« oublier » efface le cookie")
+	}
+}
+
 // ---- hors périmètre : le test d'absence ----
 
 func TestHorsPerimetre_LeSchemaResteMaigre(t *testing.T) {

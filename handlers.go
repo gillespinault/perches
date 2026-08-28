@@ -67,12 +67,33 @@ func (app *App) envoyer(dest, sujet, corps, typ string, reponseID, listeID int64
 // ---- accueil et création de liste ----
 
 func (app *App) accueil(w http.ResponseWriter, r *http.Request) {
+	var atelier *Liste
+	if c, err := r.Cookie("atelier"); err == nil {
+		if l, err := app.listeParJetonEdition(c.Value); err == nil {
+			atelier = l
+		}
+	}
 	app.rendre(w, "accueil.html", map[string]any{
 		"TitrePage": "Perches",
 		"Politique": app.politique,
 		"BaseURL":   app.baseURL,
 		"Code":      strings.TrimSpace(r.URL.Query().Get("code")),
+		"Atelier":   atelier,
 	})
+}
+
+// Le navigateur de l'hôte retient son atelier : taper l'adresse du site suffit
+// ensuite à y revenir. Cookie côté hôte uniquement — l'invité n'en reçoit jamais.
+func (app *App) retenirAtelier(w http.ResponseWriter, jeton string) {
+	http.SetCookie(w, &http.Cookie{
+		Name: "atelier", Value: jeton, Path: "/", MaxAge: 365 * 24 * 3600,
+		HttpOnly: true, Secure: strings.HasPrefix(app.baseURL, "https"), SameSite: http.SameSiteLaxMode,
+	})
+}
+
+func (app *App) oublierAtelier(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{Name: "atelier", Value: "", Path: "/", MaxAge: -1})
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
@@ -306,6 +327,7 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "erreur interne", http.StatusInternalServerError)
 		return
 	}
+	app.retenirAtelier(w, liste.JetonEdition)
 	var aVenir, passees []Intention
 	total := 0
 	for k := range intentions {

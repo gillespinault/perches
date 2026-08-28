@@ -5,6 +5,13 @@ Si quelqu'un veut se joindre à moi, ça me fait plaisir. »</p>
 <p>Une liste d'intentions, sans obligation. Tes amis n'ont besoin de rien :
 un lien, un prénom, un geste. Pas de compte, pas de fil de discussion.</p>
 
+{{with .Atelier}}
+<section class="atelier-memo">
+<h2>Ton atelier</h2>
+<p><a href="/e/{{.JetonEdition}}">{{.Titre}} →</a></p>
+<form method="post" action="/oublier" class="enligne"><button class="discret">ce n'est pas toi ? oublier ce navigateur</button></form>
+</section>
+{{end}}
 {{if or (eq .Politique "ouverte") .Code}}
 <section>
 <h2>Ouvrir ta liste</h2>
@@ -21,8 +28,8 @@ un lien, un prénom, un geste. Pas de compte, pas de fil de discussion.</p>
 </form>
 </section>
 {{else if eq .Politique "invitation"}}
-<p>Si on t'a envoyé le lien d'une page ou d'une perche, tout se passe là-bas —
-il n'y a rien à faire ici.</p>
+{{if not .Atelier}}<p>Si on t'a envoyé le lien d'une page ou d'une perche, tout se passe là-bas —
+il n'y a rien à faire ici.</p>{{end}}
 {{else}}
 <p>Cette instance n'accepte pas de nouvelles listes.</p>
 {{end}}

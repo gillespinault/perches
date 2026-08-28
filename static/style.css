@@ -141,3 +141,6 @@ button .discret { color: inherit; opacity: .75; }
 
 /* pot de miel : hors de vue, hors du flux, jamais rempli par un humain */
 label.site { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.atelier-memo { border: 1px solid var(--trait); border-radius: 6px; padding: .8rem 1.2rem; margin: 1.5rem 0; background: #fff9ef; }
+.atelier-memo h2 { margin-top: 0; border: none; }
+.atelier-memo p { font-size: 1.15rem; margin: .2rem 0; }

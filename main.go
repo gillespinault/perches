@@ -71,6 +71,7 @@ func (app *App) routes() http.Handler {
 	mux.HandleFunc("GET /{$}", app.accueil)
 	mux.HandleFunc("POST /listes", app.creerListe)
 	mux.HandleFunc("POST /recuperation", app.recupererLien)
+	mux.HandleFunc("POST /oublier", app.oublierAtelier)
 	mux.HandleFunc("GET /l/{slug}", app.voirListe)
 	mux.HandleFunc("GET /i/{jeton}", app.voirIntention)
 	mux.HandleFunc("POST /i/{jeton}/reponses", app.repondre)
