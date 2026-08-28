@@ -108,6 +108,18 @@ Convention de nommage Go : `TestConvNN_NomParlant`.
   de `perche_tendue`. Tendre la perche : formulaire, signe, filtre « Perches », rappel la
   veille de *sa* date. Retirer la perche : confirmation, e-mails connus prévenus,
   l'événement reste, l'hôte garde les réponses.
+- `TestDecision_ToutDuLongSuitLEvenement` [H] — une perche sans dates propres suit
+  l'événement quand ses dates bougent ; des dates saisies ou migrées restent fixes.
+- `TestDecision_BarreDHoteSurLesPagesPubliques` [H] — le navigateur de l'hôte voit sur ses
+  pages publiques des liens vers l'édition ouverte sur le bon événement ; sans le bon
+  cookie, aucun lien `/e/` n'apparaît.
+- `TestDecision_CarteDePartageParListeEtParEvenement` [H] — `/l/{slug}.jpg` et
+  `/i/{jeton}.jpg` sont des images 1200 × 630 ; la page les déclare en `og:image` avec une
+  empreinte du contenu, et en carte Twitter.
+- `TestDecision_ImageDuSiteDeLEvenement` [H] — l'`og:image` du lien est copiée, réduite,
+  servie d'ici, montrée dans la carte et composée dans l'aperçu ; « sans image » la retire
+  et l'empêche de revenir ; une page sans image n'en donne pas ; une adresse interne est
+  refusée.
 - `TestDecision_PercheAvecSesPropresDates` [H] — l'événement a ses dates, la perche les
   siennes : la page dit les deux, la chronologie et l'agenda ne montrent que celles de la
   perche, le rappel les suit, les changer prévient sans toucher à l'événement.
