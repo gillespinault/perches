@@ -185,7 +185,31 @@ func (i *Intention) JourCourt() string {
 	return s
 }
 
-// Complement : sous le jour — « → 2 oct. » si la perche dure, sinon « demain », ou le jour de
+// JourNum et MoisCourt : « 28 » et « sept. » — le grand chiffre de la chronologie et son mois
+// (l'année seulement si elle n'est pas celle en cours).
+func (i *Intention) JourNum() string {
+	quand, _ := i.DatesAffichees()
+	t, _, err := analyserQuand(quand.String)
+	if !quand.Valid || err != nil {
+		return "?"
+	}
+	return fmt.Sprintf("%d", t.Day())
+}
+
+func (i *Intention) MoisCourt() string {
+	quand, _ := i.DatesAffichees()
+	t, _, err := analyserQuand(quand.String)
+	if !quand.Valid || err != nil {
+		return "à fixer"
+	}
+	s := moisCourtFR[t.Month()-1]
+	if t.Year() != time.Now().Year() {
+		s += fmt.Sprintf(" %d", t.Year())
+	}
+	return s
+}
+
+// Complement : sous le mois — « lun. → 2 oct. » si ça dure, sinon « demain », ou le jour de
 // la semaine et l'heure (« sam. 10h00 »).
 func (i *Intention) Complement() string {
 	quand, fin := i.DatesAffichees()
@@ -195,7 +219,7 @@ func (i *Intention) Complement() string {
 	}
 	if fin.Valid {
 		if f, _, err := analyserQuand(fin.String); err == nil {
-			return fmt.Sprintf("→ %d %s", f.Day(), moisCourtFR[f.Month()-1])
+			return fmt.Sprintf("%s → %d %s", joursCourtFR[int(t.Weekday())], f.Day(), moisCourtFR[f.Month()-1])
 		}
 	}
 	jour := func(x time.Time) time.Time { return time.Date(x.Year(), x.Month(), x.Day(), 0, 0, 0, 0, time.Local) }
@@ -212,6 +236,42 @@ func (i *Intention) Complement() string {
 		s += fmt.Sprintf(" %dh%02d", t.Hour(), t.Minute())
 	}
 	return s
+}
+
+// PercheCourtFR : quand l'hôte y va, en court, pour la ligne de la chronologie —
+// « du 28 sept. au 2 oct. », « le sam. 24 oct. à 14h00 ».
+func (i *Intention) PercheCourtFR() string {
+	q, f := i.DatesPerche()
+	t, avecHeure, err := analyserQuand(q.String)
+	if !q.Valid || err != nil {
+		return ""
+	}
+	if f.Valid {
+		if fin, _, err := analyserQuand(f.String); err == nil {
+			return fmt.Sprintf("du %d %s au %d %s", t.Day(), moisCourtFR[t.Month()-1], fin.Day(), moisCourtFR[fin.Month()-1])
+		}
+	}
+	s := fmt.Sprintf("le %s %d %s", joursCourtFR[int(t.Weekday())], t.Day(), moisCourtFR[t.Month()-1])
+	if avecHeure {
+		s += fmt.Sprintf(" à %dh%02d", t.Hour(), t.Minute())
+	}
+	return s
+}
+
+// PercheADater : la ligne dit quand l'hôte y va si ça apporte quelque chose — l'événement dure
+// plusieurs jours, ou la perche a ses propres dates.
+func (i *Intention) PercheADater() bool {
+	return i.Fin.Valid || !i.PercheAuxDatesDeLEvenement()
+}
+
+// Apercu : la première ligne de la description, nue, pour la carte repliée.
+func (i *Intention) Apercu() string {
+	for _, l := range strings.Split(sansMarkdown(i.Description), "\n") {
+		if l = strings.TrimSpace(l); l != "" {
+			return couper(l, 140)
+		}
+	}
+	return ""
 }
 
 // dateFR : « lundi 28 septembre », l'année seulement si elle n'est pas celle en cours.

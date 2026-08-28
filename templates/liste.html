@@ -6,7 +6,8 @@
 {{end}}
 <section id="perches">
 {{if or .NbPerches .Filtre}}
-<p class="filtre"><a href="/l/{{.Liste.Slug}}"{{if not .Filtre}} class="actif" aria-current="true"{{end}}>Tout</a><a href="/l/{{.Liste.Slug}}?perches"{{if .Filtre}} class="actif" aria-current="true"{{end}}>Perches</a>{{if .Filtre}}<span class="discret">les événements où j'y vais, si ça te dit</span>{{end}}</p>
+<p class="filtre"><a href="/l/{{.Liste.Slug}}"{{if not .Filtre}} class="actif" aria-current="true"{{end}}>Tout</a><a href="/l/{{.Liste.Slug}}?perches"{{if .Filtre}} class="actif" aria-current="true"{{end}}>Perches</a></p>
+<p class="legende"><img src="/static/logo.svg" alt="" class="signe"> Le bâton marque les perches : j'y vais, si ça te dit.</p>
 {{end}}
 {{if .Perches}}
 <div class="perches">

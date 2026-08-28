@@ -33,9 +33,9 @@
 }
 
 :root {
-  --papier: #f7f5f0;
+  --papier: #f3f3ef;
   --surface: #ffffff;
-  --encre: #1b1917;
+  --encre: #17191c;
   --doux: #6c665e;
   --trait: #e2ddd4;
   --bois: #6a4b2c;
@@ -122,17 +122,9 @@ a { color: var(--bois); text-decoration-thickness: 1px; text-underline-offset: .
 /* la perche : une ligne de faits, une phrase d'engagement */
 .meta { font-size: .92rem; color: var(--doux); margin: 0 0 1rem; }
 .meta b { color: var(--encre); font-weight: 600; }
-.meta a { text-decoration: none; }
+.meta a { text-decoration: none; white-space: nowrap; }
 .meta a:hover { text-decoration: underline; }
 .quand { font-size: .88rem; color: var(--doux); margin: 0; }
-.engagement { font-size: .92rem; margin: 0 0 1.4rem; padding: .6rem .9rem; background: var(--bois-doux); border-radius: 6px; }
-.engagement.repere { background: transparent; border: 1px solid var(--trait); color: var(--doux); }
-/* la chronologie : un filtre (deux liens) et un signe — le bâton — sur les événements où une perche est tendue */
-.filtre { display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap; font-family: var(--sans); font-size: .88rem; margin: 1.6rem 0 0; }
-.filtre a { color: var(--doux); text-decoration: none; padding-bottom: .15rem; border-bottom: 1px solid transparent; }
-.filtre a:hover { color: var(--encre); }
-.filtre a.actif { color: var(--encre); border-bottom-color: var(--encre); }
-.signe { width: .8em; height: .8em; border-radius: 3px; vertical-align: -.02em; }
 .etat-perche { font-family: var(--sans); font-size: .88rem; color: var(--encre); margin: .2rem 0 .4rem; display: flex; align-items: center; gap: .4rem; }
 summary.tendre { color: var(--encre); font-weight: 500; }
 .tendre-bloc { border: 1px solid var(--trait); border-radius: 8px; padding: .2rem .9rem .6rem; margin: 1rem 0; }
@@ -140,24 +132,40 @@ summary.tendre { color: var(--encre); font-weight: 500; }
 .merci { border: 1px solid var(--trait); border-radius: 8px; padding: .9rem 1.1rem; margin: 0 0 1.6rem; background: var(--surface); font-family: var(--sans); font-size: .95rem; }
 .merci p { margin: .3rem 0; }
 
-/* la liste des perches (page publique) : des cartes qui s'ouvrent sur place — date à gauche */
-.perches { margin: 1.5rem 0 0; border-top: 1px solid var(--trait); }
-details.perche { margin: 0; border-bottom: 1px solid var(--trait); }
-details.perche > summary { display: grid; grid-template-columns: 5.4rem 1fr auto; gap: .15rem .9rem; align-items: baseline; padding: .9rem 0; list-style: none; color: var(--encre); font-family: var(--serif); font-size: 1rem; cursor: pointer; }
+/* la chronologie (page publique) : grand chiffre du jour à gauche, filets épais, l'engagement en mots */
+.perches { margin: .4rem 0 0; }
+details.perche { margin: 0; border-top: 1.5px solid var(--encre); }
+.perches + .exports { border-top: 1.5px solid var(--encre); padding-top: 1rem; margin-top: 0; }
+details.perche > summary { display: flex; gap: 1rem; padding: 1.2rem 0 1.35rem; list-style: none; color: var(--encre); font-family: var(--serif); cursor: pointer; }
 details.perche > summary::-webkit-details-marker { display: none; }
 details.perche > summary:hover .quoi { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .15em; }
-.perche .date { font-family: var(--sans); font-size: .82rem; color: var(--doux); line-height: 1.3; font-variant-numeric: tabular-nums; grid-column: 1; grid-row: 1 / span 2; align-self: start; padding-top: .2rem; }
-.perche .date b { display: block; color: var(--encre); font-weight: 600; font-size: 1rem; }
-.perche .date span { display: block; }
-.perche .quoi { font-size: 1.2rem; line-height: 1.25; grid-column: 2; grid-row: 1; }
-.perche .lieu { font-family: var(--sans); font-size: .84rem; color: var(--doux); grid-column: 2; grid-row: 2; }
-.perche .chevron { font-family: var(--sans); font-size: 1.4rem; line-height: 1; color: var(--bois); grid-column: 3; grid-row: 1 / span 2; align-self: center; transition: transform .15s; }
+.perche .date { width: 4.6rem; flex: none; line-height: .9; }
+.perche .date b { display: block; font-size: 2.9rem; font-weight: 300; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.perche .date .mois { display: block; font-family: var(--sans); font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--doux); margin-top: .5rem; }
+.perche .date .semaine { display: block; font-family: var(--sans); font-size: .7rem; color: var(--doux); margin-top: .25rem; line-height: 1.3; }
+.perche .ligne-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .3rem; padding-top: .35rem; }
+.perche .titre { display: flex; justify-content: space-between; gap: .6rem; align-items: flex-start; }
+.perche .quoi { font-size: 1.35rem; line-height: 1.15; font-weight: 500; }
+.perche .lieu { font-family: var(--sans); font-size: .84rem; color: var(--doux); }
+.perche .jyvais { display: flex; align-items: center; gap: .45rem; font-family: var(--sans); font-size: .9rem; font-weight: 500; color: var(--encre); margin-top: .1rem; }
+.perche .apercu { font-size: .95rem; color: var(--doux); line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.perche .geste { font-family: var(--sans); font-size: .84rem; color: var(--bois); margin-top: .1rem; }
+.perche .chevron { font-family: var(--sans); font-size: 1.3rem; line-height: 1; color: var(--doux); flex: none; transition: transform .15s; }
 details.perche[open] > summary .chevron { transform: rotate(90deg); }
 details.perche > .corps { padding: 0 0 1.4rem; }
 details.perche > .corps > .meta { margin-top: 0; }
 details.perche .exports { margin-top: 1.2rem; }
-@media (min-width: 40rem) { details.perche > .corps { padding-left: 6.3rem; } }
-@media (max-width: 24rem) { details.perche > summary { grid-template-columns: 4.6rem 1fr auto; } }
+@media (min-width: 40rem) { details.perche > .corps { padding-left: 5.6rem; } }
+.filtre { display: flex; gap: 1.1rem; align-items: baseline; font-family: var(--sans); font-size: .74rem; letter-spacing: .1em; text-transform: uppercase; margin: 2.2rem 0 0; }
+.filtre a { color: var(--doux); text-decoration: none; padding-bottom: .2rem; border-bottom: 1.5px solid transparent; }
+.filtre a:hover { color: var(--encre); }
+.filtre a.actif { color: var(--encre); border-bottom-color: var(--encre); }
+.legende { display: flex; align-items: center; gap: .45rem; font-family: var(--sans); font-size: .8rem; color: var(--doux); margin: .6rem 0 .8rem; }
+.signe { width: .85em; height: .85em; border-radius: 3px; vertical-align: -.05em; flex: none; }
+.engagement { display: flex; align-items: flex-start; gap: .5rem; font-size: .95rem; margin: 0 0 1.2rem; padding: 0; background: transparent; border-radius: 0; }
+.engagement .signe { width: 1.1em; height: 1.1em; margin-top: .15em; }
+.engagement b { font-weight: 600; }
+.engagement.repere { border: 0; color: var(--doux); }
 
 /* formulaires */
 form { margin: 1rem 0; }
@@ -182,10 +190,17 @@ input[type="radio"], input[type="checkbox"] { display: inline; width: auto; marg
 input[type="radio"] { width: 1.15em; height: 1.15em; vertical-align: -.15em; }
 fieldset { border: 0; padding: 0; margin: 1rem 0; min-width: 0; }
 legend { padding: 0; margin-bottom: .5rem; font-size: .88rem; color: var(--doux); }
-fieldset label { display: flex; align-items: center; gap: .75rem; margin: .5rem 0; padding: .7rem .9rem; border: 1px solid var(--trait); border-radius: 8px; background: var(--surface); color: var(--encre); font-size: 1rem; cursor: pointer; }
-fieldset label:hover { border-color: var(--doux); }
-fieldset label:has(input:checked) { border-color: var(--encre); background: var(--papier); }
-fieldset label:has(input:focus-visible) { outline: 2px solid var(--encre); outline-offset: 2px; }
+fieldset.choix { display: flex; flex-wrap: wrap; gap: .5rem; }
+fieldset.choix legend { width: 100%; }
+fieldset.choix label { display: inline-flex; align-items: center; margin: 0; padding: .65rem 1rem; border: 1px solid var(--encre); border-radius: 999px; background: transparent; color: var(--encre); font-size: .95rem; cursor: pointer; }
+fieldset.choix label input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+fieldset.choix label:hover { background: var(--bois-doux); }
+fieldset.choix label:has(input:checked) { background: var(--encre); color: var(--papier); }
+fieldset.choix label:has(input:focus-visible) { outline: 2px solid var(--encre); outline-offset: 2px; }
+form.reponse input[name="prenom"], form.reponse input[name="mot"], form.reponse input[name="email"] { border-radius: 999px; padding-left: 1rem; }
+.envoi { display: flex; align-items: center; gap: 1rem; margin: 1rem 0 0; }
+.envoi button { border-radius: 999px; }
+.envoi .silence { margin: 0; }
 label.case { display: flex; align-items: center; gap: .5rem; font-size: .88rem; }
 .enligne-champs { display: flex; gap: .5rem; }
 .enligne-champs input[type="time"] { max-width: 9rem; }

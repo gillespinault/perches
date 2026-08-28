@@ -13,13 +13,13 @@
 {{if not .Tendue}}
 {{if not .I.AnnuleeLe.Valid}}<p class="engagement repere">Repéré, sans engagement.</p>{{end}}
 {{else if .Ouverte}}
-<p class="engagement">{{if .I.PercheAuxDatesDeLEvenement}}J'y vais de toute façon.{{else}}J'y vais {{.I.PercheQuandFR}} — de toute façon.{{end}}</p>
+<p class="engagement"><img src="/static/logo.svg" alt="" class="signe"> <span>{{if .I.PercheAuxDatesDeLEvenement}}<b>J'y vais</b>{{if .I.Fin.Valid}} <b>{{.I.PercheQuandFR}}</b>{{end}}{{else}}<b>J'y vais {{.I.PercheQuandFR}}</b>{{end}} — de toute façon.</span></p>
 {{with .Presences}}<p class="qui">{{.}}</p>{{end}}
 {{with .PeutEtre}}<p class="qui">Peut-être : {{joindre . ", "}}.</p>{{end}}
 {{with .AuraitAime}}<p class="qui">{{.}}</p>{{end}}
 <form method="post" action="/i/{{.I.Jeton}}/reponses" class="reponse">
 {{if .DepuisListe}}<input type="hidden" name="retour" value="liste">{{end}}
-<fieldset>
+<fieldset class="choix">
 <legend>Si ça te dit</legend>
 <label><input type="radio" name="statut" value="jy_serai" required> J'y serai</label>
 <label><input type="radio" name="statut" value="peut_etre"> Peut-être</label>
@@ -28,17 +28,16 @@
 <label class="site" aria-hidden="true">Ne rien écrire ici <input name="verif" tabindex="-1" autocomplete="off"></label>
 <label>Prénom
 <input name="prenom" required maxlength="60" autocomplete="given-name"></label>
-<details class="plus">
-<summary>Un mot, un rappel la veille</summary>
-<label>Un mot — une ligne, lue par {{.Liste.Titre}}
+<label>Un mot (facultatif)
 <input name="mot" maxlength="200"></label>
-<label class="case"><input type="checkbox" name="prenom_visible" value="1" checked>
-Mon prénom peut apparaître sur cette page</label>
+<details class="plus">
+<summary>Un rappel la veille</summary>
 <label>E-mail — pour un rappel la veille et si la date ou le lieu change ; effacé un mois après
 <input name="email" type="email" autocomplete="email"></label>
+<label class="case"><input type="checkbox" name="prenom_visible" value="1" checked>
+Mon prénom peut apparaître sur cette page</label>
 </details>
-<button>Répondre</button>
-<p class="silence">Ne pas répondre est aussi une réponse. Redonner son prénom remplace une réponse précédente.</p>
+<p class="envoi"><button>Répondre</button><span class="silence">Ne pas répondre est aussi une réponse.</span></p>
 </form>
 {{else if .Liste.FermeeLe.Valid}}
 <p class="passee">{{.Liste.Titre}} est fermée pour le moment.</p>
@@ -53,10 +52,14 @@ Mon prénom peut apparaître sur cette page</label>
 {{define "carte"}}
 <details class="perche{{if .Tendue}} tendue{{end}}" name="perches" id="p-{{.I.Jeton}}"{{if .Ouvrir}} open{{end}}>
 <summary>
-<span class="date"><b>{{.I.JourCourt}}</b>{{with .I.Complement}}<span>{{.}}</span>{{end}}</span>
-<span class="quoi">{{if .Tendue}}<img src="/static/logo.svg" alt="perche tendue" title="Une perche est tendue : j'y vais, si ça te dit" class="signe"> {{end}}{{.I.Titre}}</span>
+<span class="date"><b>{{.I.JourNum}}</b><span class="mois">{{.I.MoisCourt}}</span>{{with .I.Complement}}<span class="semaine">{{.}}</span>{{end}}</span>
+<span class="ligne-corps">
+<span class="titre"><span class="quoi">{{.I.Titre}}</span>{{if not .Tendue}}<span class="chevron" aria-hidden="true">›</span>{{end}}</span>
 {{with .I.Lieu}}<span class="lieu">{{.}}</span>{{end}}
-<span class="chevron" aria-hidden="true">›</span>
+{{if .Tendue}}<span class="jyvais"><img src="/static/logo.svg" alt="perche tendue" class="signe"> J'y vais{{if .I.PercheADater}} {{.I.PercheCourtFR}}{{end}}</span>{{end}}
+{{with .I.Apercu}}<span class="apercu">{{.}}</span>{{end}}
+{{if .Tendue}}<span class="geste">si ça te dit ›</span>{{end}}
+</span>
 </summary>
 <div class="corps">
 {{template "perche-meta" .I}}
