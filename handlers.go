@@ -9,7 +9,6 @@ import (
 	"strings"
 )
 
-
 func (app *App) rendre(w http.ResponseWriter, nom string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := app.tpl.ExecuteTemplate(w, nom, data); err != nil {
