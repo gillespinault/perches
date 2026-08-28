@@ -254,20 +254,26 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 		servirJSONPublic(w, liste, intentions)
 	default:
 		merci, percheMerci := merciDe(r), r.URL.Query().Get("perche")
-		vues := []VuePerche{}
+		perches, reperes := []VuePerche{}, []VuePerche{}
 		for k := range intentions {
 			var m map[string]any
 			if merci != nil && intentions[k].Jeton == percheMerci {
 				m = merci
 			}
-			vues = append(vues, app.vuePerche(&intentions[k], liste, m, true))
+			v := app.vuePerche(&intentions[k], liste, m, true)
+			if v.I.Repere() {
+				reperes = append(reperes, v)
+			} else {
+				perches = append(perches, v)
+			}
 		}
 		app.rendre(w, r, "liste.html", map[string]any{
 			"TitrePage": liste.Titre,
-			"OG":        app.og(liste.Titre, descriptionOG(sansMarkdown(liste.Lettre), len(intentions)), "/l/"+liste.Slug),
+			"OG":        app.og(liste.Titre, descriptionOG(sansMarkdown(liste.Lettre), len(perches)), "/l/"+liste.Slug),
 			"Alternate": app.baseURL + "/l/" + liste.Slug + ".json",
 			"Liste":     liste,
-			"Perches":   vues,
+			"Perches":   perches,
+			"Reperes":   reperes,
 		})
 	}
 }
@@ -372,6 +378,10 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 		app.introuvable(w, r)
 		return
 	}
+	if intention.Repere() {
+		app.erreur(w, r, http.StatusGone, "Un repéré ne prend pas de réponse : il est signalé, sans engagement.")
+		return
+	}
 	if intention.AnnuleeLe.Valid || intention.Passee() || liste.FermeeLe.Valid {
 		app.erreur(w, r, http.StatusGone, "Cette perche ne prend plus de réponse.")
 		return
@@ -461,14 +471,17 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app.retenirAtelier(w, liste.JetonEdition)
-	var aVenir, passees []Intention
+	var aVenir, reperes, passees []Intention
 	total := 0
 	for k := range intentions {
 		app.chargerReponses(&intentions[k])
 		total += len(intentions[k].Reponses)
-		if intentions[k].AnnuleeLe.Valid || intentions[k].Passee() {
+		switch {
+		case intentions[k].AnnuleeLe.Valid || intentions[k].Passee():
 			passees = append(passees, intentions[k])
-		} else {
+		case intentions[k].Repere():
+			reperes = append(reperes, intentions[k])
+		default:
 			aVenir = append(aVenir, intentions[k])
 		}
 	}
@@ -476,6 +489,7 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 		"TitrePage":     liste.Titre + " — édition",
 		"Liste":         liste,
 		"AVenir":        aVenir,
+		"Reperes":       reperes,
 		"Passees":       passees,
 		"TotalReponses": total,
 		"BaseURL":       app.baseURL,
@@ -603,15 +617,23 @@ func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("visibilite") == "lien" {
 		visibilite = "lien"
 	}
+	nature := "perche"
+	if r.FormValue("nature") == "repere" { // lot E : un repéré — signalé, sans engagement
+		nature = "repere"
+	}
 	jyVais := true // décision 2026-08-28 : « j'y vais de toute façon », sans option
 	_, err = app.db.Exec(`INSERT INTO intentions
-		(liste_id, jeton, titre, description, quand, fin, lieu, url_externe, jy_vais_de_toute_facon, visibilite)
-		VALUES (?,?,?,?,?,?,?,?,?,?)`,
+		(liste_id, jeton, titre, description, quand, fin, lieu, url_externe, jy_vais_de_toute_facon, nature, visibilite)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
 		liste.ID, jeton(12), titre, r.FormValue("description"), quand, fin,
 		strings.TrimSpace(r.FormValue("lieu")), nullSi(urlPlausible(r.FormValue("url_externe"))),
-		jyVais, visibilite)
+		jyVais, nature, visibilite)
 	if err != nil {
 		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
+		return
+	}
+	if nature == "repere" {
+		http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=repere#reperes", http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=perche#perches", http.StatusSeeOther)

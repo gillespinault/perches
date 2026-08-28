@@ -84,6 +84,7 @@ type intentionJSON struct {
 	Description string `json:"description,omitempty"`
 	Quand       string `json:"quand,omitempty"`
 	Fin         string `json:"fin,omitempty"`
+	Nature      string `json:"nature"`
 	Lieu        string `json:"lieu,omitempty"`
 	URLExterne  string `json:"url_externe,omitempty"`
 	JyVais      bool   `json:"jy_vais_de_toute_facon"`
@@ -94,7 +95,7 @@ func versIntentionJSON(i Intention) intentionJSON {
 	return intentionJSON{
 		Jeton: i.Jeton, Titre: i.Titre, Description: i.Description,
 		Quand: i.Quand.String, Fin: i.Fin.String, Lieu: i.Lieu, URLExterne: i.URLExterne.String,
-		JyVais: i.JyVais, Annulee: i.AnnuleeLe.Valid,
+		Nature: i.Nature, JyVais: i.JyVais && !i.Repere(), Annulee: i.AnnuleeLe.Valid,
 	}
 }
 

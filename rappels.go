@@ -39,6 +39,7 @@ func (app *App) envoyerRappels() {
 		  AND l.fermee_le IS NULL
 		  AND r.statut <> 'jaurais_aime'
 		  AND i.annulee_le IS NULL
+		  AND i.nature = 'perche'
 		  AND i.quand IS NOT NULL
 		  AND date(i.quand) = date('now', 'localtime', '+1 day')
 		  AND NOT EXISTS (SELECT 1 FROM envois e WHERE e.reponse_id = r.id AND e.type = 'rappel_veille')`)

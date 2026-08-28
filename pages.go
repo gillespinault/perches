@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -127,4 +128,21 @@ func (app *App) pageInviter(w http.ResponseWriter, r *http.Request) {
 
 func (app *App) aPropos(w http.ResponseWriter, r *http.Request) {
 	app.rendre(w, r, "apropos.html", map[string]any{"TitrePage": "À propos de Perches", "Politique": app.politique})
+}
+
+// tendrePerche : un repéré devient une perche — l'entonnoir de la curation vers l'intention.
+// Dans l'autre sens, c'est « annuler », qui prévient.
+func (app *App) tendrePerche(w http.ResponseWriter, r *http.Request) {
+	if app.tropVite(w, r) {
+		return
+	}
+	liste, intention, ok := app.intentionDuChemin(w, r)
+	if !ok {
+		return
+	}
+	if _, err := app.db.Exec(`UPDATE intentions SET nature = 'perche' WHERE id = ?`, intention.ID); err != nil {
+		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
+		return
+	}
+	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=perche#perche-"+strconv.FormatInt(intention.ID, 10), http.StatusSeeOther)
 }

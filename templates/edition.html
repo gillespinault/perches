@@ -118,6 +118,49 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 </div>
 </section>
 
+<section class="section" id="reperes">
+<h2>Repéré</h2>
+<div>
+{{if eq .OK "repere"}}<p class="ok">Repéré ajouté.</p>{{end}}
+<p class="discret">Ce qui t'a l'air intéressant, sans intention d'y aller pour l'instant : sur ta page, sans réponse possible. « En faire une perche » quand tu te décides.</p>
+{{range .Reperes}}
+<article class="ligne" id="perche-{{.ID}}">
+<p class="quand">{{.QuandFR}}{{with .Lieu}} · {{.}}{{end}}</p>
+<h3><a href="/i/{{.Jeton}}" target="_blank" rel="noopener">{{.Titre}}</a></h3>
+<form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/perche" class="actions"><button class="sobre">En faire une perche</button></form>
+<details>
+<summary>Modifier</summary>
+<form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/maj">
+<label>Quoi <input name="titre" required maxlength="120" value="{{.Titre}}"></label>
+<label>Quand — l'heure est optionnelle <span class="enligne-champs"><input type="date" name="date" value="{{datede .Quand}}" required> <input type="time" name="heure" value="{{heurede .Quand}}"></span></label>
+<label>Jusqu'au — si ça dure plusieurs jours <input type="date" name="fin" value="{{.Fin.String}}"></label>
+<label>Où <input name="lieu" value="{{.Lieu}}"></label>
+<label>Quelques mots <textarea name="description" rows="3">{{.Description}}</textarea></label>
+<label>Lien externe <input name="url_externe" type="url" value="{{.URLExterne.String}}"></label>
+<p class="actions"><button class="sobre">Enregistrer</button>
+<a class="sobre-lien" href="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/annuler">Retirer ce repéré…</a></p>
+</form>
+</details>
+</article>
+{{else}}
+<p class="vide">Aucun repéré.</p>
+{{end}}
+<details class="nouvelle" id="nouveau-repere">
+<summary>Nouveau repéré</summary>
+<form method="post" action="/e/{{.Liste.JetonEdition}}/intentions">
+<input type="hidden" name="nature" value="repere">
+<label>Quoi <input name="titre" required maxlength="120" placeholder="Une expo, un concert, un festival…"></label>
+<label>Quand — l'heure est optionnelle <span class="enligne-champs"><input type="date" name="date" required> <input type="time" name="heure"></span></label>
+<label>Jusqu'au — si ça dure plusieurs jours <input type="date" name="fin"></label>
+<label>Où <input name="lieu"></label>
+<label>Quelques mots <textarea name="description" rows="3" placeholder="Pourquoi ça t'a l'air intéressant."></textarea></label>
+<label>Lien externe <input name="url_externe" type="url"></label>
+<button>Ajouter le repéré</button>
+</form>
+</details>
+</div>
+</section>
+
 {{if .Passees}}
 <section class="section" id="archive">
 <h2>Archive</h2>
@@ -127,7 +170,7 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 {{if eq .OK "annulee"}}<p class="ok">Annulée — ceux qui ont laissé un e-mail sont prévenus.</p>{{end}}
 {{range .Passees}}
 <article class="ligne passee" id="perche-{{.ID}}">
-<p class="quand">{{.QuandFR}}{{with .Lieu}} · {{.}}{{end}}{{if .AnnuleeLe.Valid}} · annulée{{end}}</p>
+<p class="quand">{{.QuandFR}}{{with .Lieu}} · {{.}}{{end}}{{if .Repere}} · repéré{{end}}{{if .AnnuleeLe.Valid}} · {{if .Repere}}retiré{{else}}annulée{{end}}{{end}}</p>
 <h3>{{.Titre}}</h3>
 <ul class="reponses">
 {{range .Reponses}}
@@ -137,7 +180,7 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 {{end}}
 </ul>
 {{if and .AnnuleeLe.Valid (not .Passee)}}
-<form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/retablir"><button class="sobre">Rétablir — ceux qui ont laissé un e-mail seront prévenus</button></form>
+<form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/retablir"><button class="sobre">Rétablir{{if not .Repere}} — ceux qui ont laissé un e-mail seront prévenus{{end}}</button></form>
 {{end}}
 </article>
 {{end}}

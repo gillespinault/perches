@@ -75,9 +75,16 @@ func (app *App) confirmerAnnulation(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	action := fmt.Sprintf("/e/%s/intentions/%d/annuler", liste.JetonEdition, intention.ID)
+	if intention.Repere() {
+		app.confirmer(w, r, "Retirer « "+intention.Titre+" » ?",
+			"Il quittera ta page ; personne n'est prévenu. Tu pourras le rétablir tant que la date n'est pas passée.",
+			action, "Oui, retirer", "/e/"+liste.JetonEdition)
+		return
+	}
 	app.confirmer(w, r, "Annuler « "+intention.Titre+" » ?",
 		prevenus(app.nbAvecEmail(intention.ID))+" Tu pourras rétablir la perche tant que la date n'est pas passée.",
-		fmt.Sprintf("/e/%s/intentions/%d/annuler", liste.JetonEdition, intention.ID), "Oui, annuler", "/e/"+liste.JetonEdition)
+		action, "Oui, annuler", "/e/"+liste.JetonEdition)
 }
 
 func (app *App) retablirIntention(w http.ResponseWriter, r *http.Request) {

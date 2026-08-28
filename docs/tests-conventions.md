@@ -101,6 +101,12 @@ Convention de nommage Go : `TestConvNN_NomParlant`.
 - `TestConv11_TypesDEnvoiBornes` [S] — `INSERT … type='nouveau_participant'` dans
   `envois` → violation de CHECK.
 
+## C12 — Un repéré ne demande rien (lot E, 28 août 2026)
+
+- `TestConv12_RepereSansReponse` [H] — un repéré est sur la page publique, dans sa
+  section, sans formulaire ; `POST` d'une réponse → 410 ; aucun rappel ; l'export dit sa
+  nature ; « en faire une perche » le fait passer dans les perches, avec formulaire.
+
 ---
 
 ## Décisions annexes (DECISIONS.md), également testées

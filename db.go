@@ -67,6 +67,14 @@ func migrer(db *sql.DB) error {
 			return err
 		}
 	}
+	// 2026-08-28 (lot E) : curation — colonne nature (perche | repere). ALTER ne sait pas poser
+	// la contrainte CHECK : sur une base migrée, c'est le code qui la tient (creerIntention).
+	db.QueryRow(`SELECT count(*) FROM pragma_table_info('intentions') WHERE name = 'nature'`).Scan(&n)
+	if n == 0 {
+		if _, err := db.Exec(`ALTER TABLE intentions ADD COLUMN nature TEXT NOT NULL DEFAULT 'perche'`); err != nil {
+			return err
+		}
+	}
 	if strings.Contains(def, "jaurais_aime") {
 		return nil
 	}

@@ -27,6 +27,14 @@ viendra plus tard), éventuellement un dernier jour si elle dure, un lieu, et la
 - **Elle est asymétrique et l'assume.** L'hôte y va de toute façon ; l'invité s'ajoute ou non. Personne ne dépend de personne.
 - **Elle porte son mode d'emploi.** Les conventions sont affichées par l'outil, pas par la personne — en une phrase, sans commentaire.
 
+## Le repéré : la curation à côté de l'intention
+
+Depuis le 28 août 2026, une liste porte deux choses. La *perche* : « j'y vais, si ça te
+dit ». Le *repéré* : « ça m'a l'air intéressant » — un événement signalé, daté comme une
+perche, mais sans engagement et sans formulaire de réponse. Une liste qui propose est
+plus généreuse qu'une liste qui demande, et elle vit entre deux perches. Quand l'hôte se
+décide, un repéré devient une perche d'un geste ; dans l'autre sens, c'est « retirer ».
+
 ## Les conventions
 
 Elles sont le produit ; tout le reste est de la plomberie. Elles vivent dans la
@@ -43,6 +51,7 @@ structure — boutons, champs, absence de champs — et sont encodées en tests.
 9. Ce qui est passé disparaît de la page ; l'hôte garde ses lettres.
 10. La page est une lettre avant d'être un formulaire : le texte libre passe avant la mécanique.
 11. On ne notifie que ce qui ferait manquer le rendez-vous (annulation, changement de date ou de lieu) — jamais rien de social.
+12. Un *repéré* ne demande rien : ni réponse, ni engagement. Il se signale, c'est tout — et peut devenir une perche.
 
 ## Comment ça marche
 

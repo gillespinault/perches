@@ -35,6 +35,8 @@ CREATE TABLE intentions (
     lieu         TEXT NOT NULL DEFAULT '',
     url_externe  TEXT,                     -- l'expo, le festival — carte d'aperçu et coïncidences
     jy_vais_de_toute_facon INTEGER NOT NULL DEFAULT 1,
+    -- perche : j'y vais, si ça te dit ; repéré : ça m'a l'air intéressant, sans engagement ni réponse
+    nature       TEXT NOT NULL DEFAULT 'perche' CHECK (nature IN ('perche', 'repere')),
     visibilite   TEXT NOT NULL DEFAULT 'page' CHECK (visibilite IN ('page', 'lien')),
     annulee_le   TEXT,                     -- annulation = logistique : notifiée aux e-mails connus
     cree_le      TEXT NOT NULL DEFAULT (datetime('now')),

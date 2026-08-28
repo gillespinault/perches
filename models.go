@@ -33,6 +33,7 @@ type Intention struct {
 	Lieu        string
 	URLExterne  sql.NullString
 	JyVais      bool
+	Nature      string // perche | repere (lot E, 2026-08-28)
 	Visibilite  string
 	AnnuleeLe   sql.NullString
 	CreeLe      string
@@ -62,6 +63,9 @@ func analyserQuand(q string) (t time.Time, avecHeure bool, err error) {
 	t, err = time.ParseInLocation("2006-01-02", q, time.Local)
 	return t, false, err
 }
+
+// Repere : une intention sans engagement — signalée, jamais répondue.
+func (i *Intention) Repere() bool { return i.Nature == "repere" }
 
 // dernierJour : le jour où la perche se termine — la date de fin si elle dure, sinon le jour même.
 func (i *Intention) dernierJour() (t time.Time, avecHeure bool, ok bool) {
@@ -224,14 +228,14 @@ var fonctionsTpl = template.FuncMap{
 // ---- requêtes ----
 
 const colonnesIntention = `id, liste_id, jeton, titre, description, quand, fin, echeance_decision,
-	lieu, url_externe, jy_vais_de_toute_facon, visibilite, annulee_le, cree_le`
+	lieu, url_externe, jy_vais_de_toute_facon, nature, visibilite, annulee_le, cree_le`
 
 type scanneur interface{ Scan(dest ...any) error }
 
 func scanIntention(row scanneur) (*Intention, error) {
 	var i Intention
 	err := row.Scan(&i.ID, &i.ListeID, &i.Jeton, &i.Titre, &i.Description, &i.Quand, &i.Fin, &i.Echeance,
-		&i.Lieu, &i.URLExterne, &i.JyVais, &i.Visibilite, &i.AnnuleeLe, &i.CreeLe)
+		&i.Lieu, &i.URLExterne, &i.JyVais, &i.Nature, &i.Visibilite, &i.AnnuleeLe, &i.CreeLe)
 	if err != nil {
 		return nil, err
 	}

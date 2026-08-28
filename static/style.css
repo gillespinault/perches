@@ -126,6 +126,8 @@ a { color: var(--bois); text-decoration-thickness: 1px; text-underline-offset: .
 .meta a:hover { text-decoration: underline; }
 .quand { font-size: .88rem; color: var(--doux); margin: 0; }
 .engagement { font-size: .92rem; margin: 0 0 1.4rem; padding: .6rem .9rem; background: var(--bois-doux); border-radius: 6px; }
+.engagement.repere { background: transparent; border: 1px solid var(--trait); color: var(--doux); }
+section#reperes { margin-top: 2rem; }
 .merci { border: 1px solid var(--trait); border-radius: 8px; padding: .9rem 1.1rem; margin: 0 0 1.6rem; background: var(--surface); font-family: var(--sans); font-size: .95rem; }
 .merci p { margin: .3rem 0; }
 

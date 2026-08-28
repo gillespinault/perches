@@ -6,26 +6,21 @@
 {{end}}
 <section id="perches">
 {{if .Perches}}
+{{if .Reperes}}<h2>Perches</h2>{{end}}
 <div class="perches">
-{{range .Perches}}
-<details class="perche" name="perches" id="p-{{.I.Jeton}}"{{if .Ouvrir}} open{{end}}>
-<summary>
-<span class="date"><b>{{.I.JourCourt}}</b>{{with .I.Complement}}<span>{{.}}</span>{{end}}</span>
-<span class="quoi">{{.I.Titre}}</span>
-{{with .I.Lieu}}<span class="lieu">{{.}}</span>{{end}}
-<span class="chevron" aria-hidden="true">›</span>
-</summary>
-<div class="corps">
-{{template "perche-meta" .I}}
-{{template "perche-corps" .}}
-<p class="exports"><a href="/i/{{.I.Jeton}}">Cette perche seule ↗</a> <a href="/i/{{.I.Jeton}}.ics">Ajouter à mon calendrier</a></p>
+{{range .Perches}}{{template "carte" .}}{{end}}
 </div>
-</details>
-{{end}}
-</div>
-<p class="exports"><a href="/l/{{.Liste.Slug}}.ics">Ajouter toutes ces dates à mon calendrier</a></p>
-{{else if not .Liste.FermeeLe.Valid}}
+{{else if and (not .Reperes) (not .Liste.FermeeLe.Valid)}}
 <p class="vide">Aucune perche pour le moment.</p>
 {{end}}
 </section>
+{{if .Reperes}}
+<section id="reperes">
+<h2>Repéré</h2>
+<div class="perches">
+{{range .Reperes}}{{template "carte" .}}{{end}}
+</div>
+</section>
+{{end}}
+{{if or .Perches .Reperes}}<p class="exports"><a href="/l/{{.Liste.Slug}}.ics">Ajouter toutes ces dates à mon calendrier</a></p>{{end}}
 {{template "pied" .}}

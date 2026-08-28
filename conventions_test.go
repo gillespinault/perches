@@ -1335,3 +1335,46 @@ func TestDecision_MenuEtTheme(t *testing.T) {
 		t.Fatal("« auto » efface le cookie ; un retour hors du site est ignoré")
 	}
 }
+
+// ---- C12 : un repéré ne demande rien (lot E, 2026-08-28) ----
+
+func TestConv12_RepereSansReponse(t *testing.T) {
+	app, m := appTest(t)
+	listeTest(t, app)
+	rec := POST(app, "/e/edtest/intentions", url.Values{"titre": {"Expo Ensor"}, "date": {dans(1)}, "fin": {dans(60)}, "nature": {"repere"}})
+	if rec.Code != 303 || !strings.HasSuffix(rec.Header().Get("Location"), "?ok=repere#reperes") {
+		t.Fatalf("créer un repéré : %d %q", rec.Code, rec.Header().Get("Location"))
+	}
+	var j string
+	var id int64
+	app.db.QueryRow(`SELECT jeton, id FROM intentions WHERE titre = 'Expo Ensor'`).Scan(&j, &id)
+	page := GET(app, "/l/test").Body.String()
+	if !strings.Contains(page, "Repéré") || !strings.Contains(page, "Expo Ensor") || strings.Contains(page, `name="statut"`) || !strings.Contains(page, "sans engagement") {
+		t.Fatal("un repéré est sur la page, dans sa section, sans formulaire de réponse")
+	}
+	if strings.Contains(page, "<h2>Perches</h2>") {
+		t.Fatal("sans perche, pas d'étiquette « Perches »")
+	}
+	if p := GET(app, "/i/"+j).Body.String(); strings.Contains(p, `name="statut"`) || !strings.Contains(p, "sans engagement") {
+		t.Fatal("la page d'un repéré n'a pas de formulaire")
+	}
+	if rec := POST(app, "/i/"+j+"/reponses", url.Values{"prenom": {"Anna"}, "statut": {"jy_serai"}}); rec.Code != 410 {
+		t.Fatalf("répondre à un repéré est refusé (410), reçu %d", rec.Code)
+	}
+	app.envoyerRappels()
+	if len(m.Envois) != 0 {
+		t.Fatal("aucun rappel pour un repéré")
+	}
+	if !strings.Contains(GET(app, "/e/edtest/export.json").Body.String(), `"nature":"repere"`) {
+		t.Fatal("l'export dit la nature")
+	}
+	// l'entonnoir : en faire une perche
+	if rec := POST(app, fmt.Sprintf("/e/edtest/intentions/%d/perche", id), nil); rec.Code != 303 {
+		t.Fatalf("en faire une perche : %d", rec.Code)
+	}
+	page = GET(app, "/l/test").Body.String()
+	if !strings.Contains(page, `name="statut"`) || strings.Contains(page, "<h2>Repéré</h2>") {
+		t.Fatal("devenue perche, elle prend des réponses et quitte la section « Repéré »")
+	}
+	repondreTest(t, app, j, "Anna", "jy_serai", "", "")
+}

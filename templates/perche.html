@@ -9,7 +9,9 @@
 </aside>
 {{end}}
 {{with .I.Description}}<div class="description">{{md .}}</div>{{end}}
-{{if .Ouverte}}
+{{if .I.Repere}}
+{{if .Ouverte}}<p class="engagement repere">Repéré, sans engagement.</p>{{else if not .I.AnnuleeLe.Valid}}<p class="passee">C'est passé.</p>{{end}}
+{{else if .Ouverte}}
 <p class="engagement">J'y vais de toute façon.</p>
 {{with .Presences}}<p class="qui">{{.}}</p>{{end}}
 {{with .PeutEtre}}<p class="qui">Peut-être : {{joindre . ", "}}.</p>{{end}}
@@ -45,3 +47,20 @@ Mon prénom peut apparaître sur cette page</label>
 {{end}}
 
 {{define "perche-meta"}}<p class="meta"><b>{{.QuandFR}}</b>{{with .Lieu}} · {{.}}{{end}}{{if .URLExterne.Valid}} · <a href="{{.URLExterne.String}}" rel="noopener" title="{{.URLExterne.String}}">site ↗</a>{{end}}</p>{{end}}
+
+{{/* Une carte de la liste : la ligne, puis la perche entière qui s'ouvre sur place. Reçoit une VuePerche. */}}
+{{define "carte"}}
+<details class="perche{{if .I.Repere}} repere{{end}}" name="perches" id="p-{{.I.Jeton}}"{{if .Ouvrir}} open{{end}}>
+<summary>
+<span class="date"><b>{{.I.JourCourt}}</b>{{with .I.Complement}}<span>{{.}}</span>{{end}}</span>
+<span class="quoi">{{.I.Titre}}</span>
+{{with .I.Lieu}}<span class="lieu">{{.}}</span>{{end}}
+<span class="chevron" aria-hidden="true">›</span>
+</summary>
+<div class="corps">
+{{template "perche-meta" .I}}
+{{template "perche-corps" .}}
+<p class="exports"><a href="/i/{{.I.Jeton}}">{{if .I.Repere}}Ce repéré seul{{else}}Cette perche seule{{end}} ↗</a> <a href="/i/{{.I.Jeton}}.ics">Ajouter à mon calendrier</a></p>
+</div>
+</details>
+{{end}}
