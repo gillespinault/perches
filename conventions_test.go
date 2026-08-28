@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
@@ -710,12 +711,12 @@ func TestDecision_UnHoteOuvreLaPorteAUnAmi(t *testing.T) {
 	listeTest(t, app)
 	rec := POST(app, "/e/edtest/invitations", nil)
 	loc := rec.Header().Get("Location")
-	code := strings.TrimSuffix(strings.TrimPrefix(loc, "/e/edtest?invitation="), "#inviter")
+	code := strings.TrimPrefix(loc, "/e/edtest/inviter?invitation=")
 	if rec.Code != 303 || len(code) != 16 {
 		t.Fatalf("redirection inattendue : %d %q", rec.Code, loc)
 	}
 	if !strings.Contains(GET(app, loc).Body.String(), "/?code="+code) {
-		t.Fatal("l'atelier montre le lien d'invitation à envoyer")
+		t.Fatal("la page « inviter » montre le lien à envoyer")
 	}
 	if !strings.Contains(GET(app, "/?code="+code).Body.String(), `name="titre"`) {
 		t.Fatal("le lien d'invitation ouvre le formulaire")
@@ -1263,5 +1264,74 @@ func TestDecision_PercheSurPlusieursJours(t *testing.T) {
 	app.db.Exec(`UPDATE intentions SET fin = ? WHERE id = ?`, ilYA(1), i.ID)
 	if strings.Contains(GET(app, "/l/test").Body.String(), "Finie") {
 		t.Fatal("après son dernier jour, la perche quitte la page")
+	}
+}
+
+func TestDecision_RepondreDepuisLaListe(t *testing.T) {
+	// Lot B2 : la perche s'ouvre sur place, dans la liste ; on y répond sans changer de page,
+	// et l'on revient sur la liste, carte ouverte, avec le mot de confirmation dedans.
+	app, _ := appTest(t)
+	listeTest(t, app)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
+	page := GET(app, "/l/test").Body.String()
+	if !strings.Contains(page, `name="statut"`) || !strings.Contains(page, `name="retour"`) || !strings.Contains(page, "machines ensemble") {
+		t.Fatal("la liste porte la perche entière et son formulaire")
+	}
+	if strings.Index(page, "voici mes envies") > strings.Index(page, "KIKK") {
+		t.Fatal("la lettre précède toujours les perches")
+	}
+	rec := POST(app, "/i/"+i.Jeton+"/reponses", url.Values{"prenom": {"Anna"}, "statut": {"jy_serai"}, "prenom_visible": {"1"}, "retour": {"liste"}})
+	loc := rec.Header().Get("Location")
+	if rec.Code != 303 || !strings.HasPrefix(loc, "/l/test?") || !strings.HasSuffix(loc, "#p-"+i.Jeton) {
+		t.Fatalf("depuis la liste, on revient à la liste : %d %q", rec.Code, loc)
+	}
+	page = GET(app, loc).Body.String()
+	if !strings.Contains(page, "Réponse enregistrée") || !strings.Contains(page, `id="p-`+i.Jeton+`" open`) || !strings.Contains(page, "Seront là : Anna") {
+		t.Fatal("la carte répondue est ouverte, avec la confirmation et la présence")
+	}
+	if !strings.Contains(GET(app, "/i/"+i.Jeton).Body.String(), "Seront là : Anna") {
+		t.Fatal("la page de la perche montre la même chose")
+	}
+}
+
+func TestDecision_MenuEtTheme(t *testing.T) {
+	app, _ := appTest(t)
+	app.politique = "invitation"
+	listeTest(t, app)
+	page := GET(app, "/e/edtest").Body.String()
+	for _, lien := range []string{`href="/e/edtest/reglages"`, `href="/e/edtest/inviter"`, `href="/a-propos"`, `action="/theme"`, `action="/oublier"`} {
+		if !strings.Contains(page, lien) {
+			t.Fatalf("le menu de l'édition manque : %s", lien)
+		}
+	}
+	if strings.Contains(page, `name="slug"`) {
+		t.Fatal("les réglages ne sont plus dans le flux de l'édition")
+	}
+	if rec := GET(app, "/e/edtest/reglages"); rec.Code != 200 || !strings.Contains(rec.Body.String(), `name="slug"`) {
+		t.Fatalf("page réglages : %d", rec.Code)
+	}
+	if rec := GET(app, "/e/inconnu/reglages"); rec.Code != 404 {
+		t.Fatalf("réglages d'une édition inconnue : %d", rec.Code)
+	}
+	if rec := GET(app, "/a-propos"); rec.Code != 200 || !strings.Contains(rec.Body.String(), "AGPL") || !strings.Contains(rec.Body.String(), "github.com") {
+		t.Fatalf("à propos : %d", rec.Code)
+	}
+	rec := POST(app, "/theme", url.Values{"theme": {"sombre"}, "retour": {"/e/edtest"}})
+	cookie := rec.Header().Get("Set-Cookie")
+	if rec.Code != 303 || rec.Header().Get("Location") != "/e/edtest" || !strings.HasPrefix(cookie, "theme=sombre") {
+		t.Fatalf("choisir un thème pose un cookie et ramène à l'édition : %d %q %q", rec.Code, rec.Header().Get("Location"), cookie)
+	}
+	req := httptest.NewRequest("GET", "/l/test", nil)
+	req.AddCookie(&http.Cookie{Name: "theme", Value: "sombre"})
+	w := httptest.NewRecorder()
+	app.handler().ServeHTTP(w, req)
+	if !strings.Contains(w.Body.String(), `data-theme="dark"`) {
+		t.Fatal("le thème choisi s'applique à toutes les pages")
+	}
+	if strings.Contains(GET(app, "/l/test").Body.String(), "data-theme") {
+		t.Fatal("sans choix, le système décide")
+	}
+	if rec := POST(app, "/theme", url.Values{"theme": {"auto"}, "retour": {"//ailleurs"}}); rec.Header().Get("Location") != "/" || !strings.Contains(rec.Header().Get("Set-Cookie"), "Max-Age=0") {
+		t.Fatal("« auto » efface le cookie ; un retour hors du site est ignoré")
 	}
 }

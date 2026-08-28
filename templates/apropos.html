@@ -1,0 +1,23 @@
+{{template "entete" .}}
+<h1><img src="/static/logo.svg" alt="" class="marque grande"> Perches</h1>
+<p class="citation">« Pour info, j'ai l'intention de faire telle activité, à tel moment.
+Si quelqu'un veut se joindre à moi, ça me fait plaisir. »</p>
+<p>Perches permet de dire cela sans créer d'obligation, et à ses amis de répondre d'un geste :
+sans compte, sans application, sans négociation.</p>
+<h2>Les conventions</h2>
+<ul class="conventions">
+<li>Le silence vaut « pas cette fois ».</li>
+<li>Trois réponses — « j'y serai », « peut-être », « j'aurais bien aimé » — et aucune n'est un refus. Il n'y a pas de « non ».</li>
+<li>Pas de fil de discussion : au plus une ligne, lue, sans réponse attendue.</li>
+<li>« J'y vais de toute façon » — toujours.</li>
+<li>La voix de l'hôte ouvre sa page et accompagne chaque perche.</li>
+<li>Rien ne notifie l'hôte ; l'invité n'a jamais de compte.</li>
+<li>Ce qui est passé disparaît de la page.</li>
+<li>On ne prévient que de ce qui ferait manquer le rendez-vous : annulation, changement de date ou de lieu.</li>
+</ul>
+<h2>Le code</h2>
+<p>Perches est un logiciel libre (AGPL-3.0). Le code, la documentation et le journal des décisions sont sur
+<a href="https://github.com/gillespinault/perches" rel="noopener">github.com/gillespinault/perches</a>.
+N'importe qui peut faire tourner une instance ; chaque liste s'exporte à tout moment (calendrier, JSON).</p>
+{{if eq .Politique "invitation"}}<p class="discret">Cette instance s'ouvre sur invitation.</p>{{end}}
+{{template "pied" .}}

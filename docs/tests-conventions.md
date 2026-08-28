@@ -126,6 +126,13 @@ Convention de nommage Go : `TestConvNN_NomParlant`.
   « du … au … », reste sur la page jusqu'à ce jour, donne à l'agenda des journées
   entières (`DTEND`), et refuse une fin qui précède le début. Ajouter ou changer la fin
   est de la logistique : les e-mails connus sont prévenus.
+- `TestDecision_RepondreDepuisLaListe` [H] — la page de la liste porte chaque perche
+  entière avec son formulaire ; répondre depuis la liste ramène à la liste, carte
+  ouverte, avec la confirmation et la présence ; la page de la perche montre la même chose.
+- `TestDecision_MenuEtTheme` [H] — l'édition offre un menu (inviter, réglages, export,
+  thème, à propos, déconnexion) et ne porte plus les réglages dans son flux ; les pages
+  réglages, inviter et à propos répondent ; choisir un thème pose un cookie qui s'applique
+  à toutes les pages, « auto » l'efface, un retour hors du site est ignoré.
 
 ## Hors périmètre : tests d'absence
 

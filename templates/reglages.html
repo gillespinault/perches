@@ -1,0 +1,19 @@
+{{template "entete" .}}
+<p class="fil"><a href="/e/{{.Liste.JetonEdition}}">← {{.Liste.Titre}}, édition</a></p>
+<h1>Réglages</h1>
+{{if .OK}}<p class="ok">Enregistré.</p>{{end}}
+<form method="post" action="/e/{{.Liste.JetonEdition}}/reglages">
+<label>Titre <input name="titre" required maxlength="80" value="{{.Liste.Titre}}"></label>
+<label>Adresse de la page
+<span class="prefixe"><span>{{.BaseURL}}/l/</span><input name="slug" required pattern="[a-z0-9][a-z0-9-]+" value="{{.Liste.Slug}}" title="minuscules, chiffres, tirets"></span></label>
+<p class="discret">Changer l'adresse casse les liens déjà envoyés.</p>
+<label>E-mail — il renvoie le lien d'édition <input name="email" type="email" required value="{{.Liste.Email.String}}"></label>
+<button>Enregistrer</button>
+</form>
+{{if .Liste.FermeeLe.Valid}}
+<p class="discret">La liste est fermée : la page dit « fermée pour le moment », tout est conservé.</p>
+<form method="post" action="/e/{{.Liste.JetonEdition}}/rouvrir"><button class="sobre">Rouvrir la liste</button></form>
+{{else}}
+<p class="discret"><a href="/e/{{.Liste.JetonEdition}}/fermer">Fermer la liste…</a> — la page dira « fermée pour le moment » ; tout reste dans l'édition.</p>
+{{end}}
+{{template "pied" .}}

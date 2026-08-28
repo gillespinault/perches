@@ -24,7 +24,7 @@ func (app *App) erreur(w http.ResponseWriter, r *http.Request, code int, message
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(code)
 	app.tpl.ExecuteTemplate(w, "message.html", map[string]any{
-		"TitrePage": "Perches", "Message": message, "Retour": retour, "Libelle": libelle,
+		"TitrePage": "Perches", "Message": message, "Retour": retour, "Libelle": libelle, "Theme": themeDe(r),
 	})
 }
 
@@ -47,8 +47,8 @@ func (app *App) introuvable(w http.ResponseWriter, r *http.Request) {
 	app.erreur(w, r, http.StatusNotFound, message)
 }
 
-func (app *App) confirmer(w http.ResponseWriter, titre, question, action, bouton, retour string) {
-	app.rendre(w, "confirmer.html", map[string]any{
+func (app *App) confirmer(w http.ResponseWriter, r *http.Request, titre, question, action, bouton, retour string) {
+	app.rendre(w, r, "confirmer.html", map[string]any{
 		"TitrePage": titre, "Titre": titre, "Question": question,
 		"Action": action, "Bouton": bouton, "Retour": retour,
 	})
@@ -75,7 +75,7 @@ func (app *App) confirmerAnnulation(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	app.confirmer(w, "Annuler « "+intention.Titre+" » ?",
+	app.confirmer(w, r, "Annuler « "+intention.Titre+" » ?",
 		prevenus(app.nbAvecEmail(intention.ID))+" Tu pourras rétablir la perche tant que la date n'est pas passée.",
 		fmt.Sprintf("/e/%s/intentions/%d/annuler", liste.JetonEdition, intention.ID), "Oui, annuler", "/e/"+liste.JetonEdition)
 }
@@ -116,7 +116,7 @@ func (app *App) confirmerEffacement(w http.ResponseWriter, r *http.Request) {
 	if mot != "" {
 		question = "Son mot — « " + mot + " » — disparaîtra avec. " + question
 	}
-	app.confirmer(w, "Effacer la réponse de "+prenom+" ?", question,
+	app.confirmer(w, r, "Effacer la réponse de "+prenom+" ?", question,
 		"/e/"+liste.JetonEdition+"/reponses/"+r.PathValue("id")+"/effacer", "Oui, effacer", "/e/"+liste.JetonEdition)
 }
 
@@ -126,8 +126,8 @@ func (app *App) confirmerFermeture(w http.ResponseWriter, r *http.Request) {
 		app.introuvable(w, r)
 		return
 	}
-	app.confirmer(w, "Fermer « "+liste.Titre+" » ?",
-		"Ta page dira « fermée pour le moment », sans perches ni introduction. Personne n'est prévenu. Tout reste ici, et tu peux rouvrir quand tu veux.",
+	app.confirmer(w, r, "Fermer « "+liste.Titre+" » ?",
+		"Ta page dira « fermée pour le moment », sans perches ni introduction. Personne n'est prévenu. Tout reste dans l'édition, et tu peux rouvrir quand tu veux.",
 		"/e/"+liste.JetonEdition+"/fermer", "Oui, fermer", "/e/"+liste.JetonEdition)
 }
 

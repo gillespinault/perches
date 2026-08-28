@@ -13,8 +13,11 @@ import (
 
 var slugValide = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,40}$`)
 
-func (app *App) rendre(w http.ResponseWriter, nom string, data any) {
+func (app *App) rendre(w http.ResponseWriter, r *http.Request, nom string, data any) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if m, ok := data.(map[string]any); ok {
+		m["Theme"] = themeDe(r)
+	}
 	if err := app.tpl.ExecuteTemplate(w, nom, data); err != nil {
 		log.Printf("template %s : %v", nom, err)
 	}
@@ -73,7 +76,7 @@ func (app *App) accueil(w http.ResponseWriter, r *http.Request) {
 			code, codeInvalide = "", true
 		}
 	}
-	app.rendre(w, "accueil.html", map[string]any{
+	app.rendre(w, r, "accueil.html", map[string]any{
 		"TitrePage":    "Perches",
 		"Politique":    app.politique,
 		"BaseURL":      app.baseURL,
@@ -207,7 +210,7 @@ func (app *App) recupererLien(w http.ResponseWriter, r *http.Request) {
 			}
 		})
 	}
-	app.rendre(w, "message.html", map[string]any{
+	app.rendre(w, r, "message.html", map[string]any{
 		"TitrePage": "Perches",
 		"Message":   "Si cet e-mail est connu ici, le lien d'édition vient de partir.",
 	})
@@ -250,12 +253,21 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 	case "json":
 		servirJSONPublic(w, liste, intentions)
 	default:
-		app.rendre(w, "liste.html", map[string]any{
-			"TitrePage":  liste.Titre,
-			"OG":         app.og(liste.Titre, descriptionOG(sansMarkdown(liste.Lettre), len(intentions)), "/l/"+liste.Slug),
-			"Alternate":  app.baseURL + "/l/" + liste.Slug + ".json",
-			"Liste":      liste,
-			"Intentions": intentions,
+		merci, percheMerci := merciDe(r), r.URL.Query().Get("perche")
+		vues := []VuePerche{}
+		for k := range intentions {
+			var m map[string]any
+			if merci != nil && intentions[k].Jeton == percheMerci {
+				m = merci
+			}
+			vues = append(vues, app.vuePerche(&intentions[k], liste, m, true))
+		}
+		app.rendre(w, r, "liste.html", map[string]any{
+			"TitrePage": liste.Titre,
+			"OG":        app.og(liste.Titre, descriptionOG(sansMarkdown(liste.Lettre), len(intentions)), "/l/"+liste.Slug),
+			"Alternate": app.baseURL + "/l/" + liste.Slug + ".json",
+			"Liste":     liste,
+			"Perches":   vues,
 		})
 	}
 }
@@ -333,32 +345,7 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 		servirICS(w, intention.Titre, []Intention{*intention}, app.baseURL)
 		return
 	}
-	app.chargerReponses(intention)
-	var jySerai, peutEtre, auraitAime []string
-	discrets := 0
-	if !intention.ReponsesEffacees() {
-		for _, rep := range intention.Reponses {
-			if !rep.PrenomVisible {
-				if rep.Statut == "jy_serai" {
-					discrets++
-				}
-				continue
-			}
-			switch rep.Statut {
-			case "jy_serai":
-				jySerai = append(jySerai, rep.Prenom)
-			case "peut_etre":
-				peutEtre = append(peutEtre, rep.Prenom)
-			default:
-				auraitAime = append(auraitAime, rep.Prenom)
-			}
-		}
-	}
-	var merci map[string]any
-	if s := r.URL.Query().Get("merci"); s == "jy_serai" || s == "peut_etre" || s == "jaurais_aime" {
-		merci = map[string]any{"Statut": s, "Prenom": r.URL.Query().Get("prenom"), "AvecEmail": r.URL.Query().Get("email") == "1"}
-	}
-	ouverte := !intention.AnnuleeLe.Valid && !intention.Passee() && !liste.FermeeLe.Valid
+	v := app.vuePerche(intention, liste, merciDe(r), false)
 	if liste.FermeeLe.Valid {
 		liste.Lettre = ""
 	}
@@ -366,19 +353,13 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 	if intention.Lieu != "" {
 		ogDesc += " — " + intention.Lieu
 	}
-	app.rendre(w, "intention.html", map[string]any{
-		"TitrePage":        intention.Titre,
-		"OG":               app.og(intention.Titre, ogDesc, "/i/"+intention.Jeton),
-		"Liste":            liste,
-		"I":                intention,
-		"Ouverte":          ouverte,
-		"Presences":        phrasePresences(jySerai, discrets),
-		"PrenomsPeutEtre":  peutEtre,
-		"AuraitAime":       phraseAuraitAime(auraitAime),
-		"LienSeulement":    intention.Visibilite == "lien",
-		"Voix":             couper(strings.TrimSpace(sansMarkdown(liste.Lettre)), 280),
-		"Merci":            merci,
-		"FormulaireOuvert": ouverte,
+	app.rendre(w, r, "intention.html", map[string]any{
+		"TitrePage":     intention.Titre,
+		"OG":            app.og(intention.Titre, ogDesc, "/i/"+intention.Jeton),
+		"Liste":         liste,
+		"V":             v,
+		"LienSeulement": intention.Visibilite == "lien",
+		"Voix":          couper(strings.TrimSpace(sansMarkdown(liste.Lettre)), 280),
 	})
 }
 
@@ -457,6 +438,11 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 	if email != "" {
 		q.Set("email", "1")
 	}
+	if r.FormValue("retour") == "liste" {
+		q.Set("perche", intention.Jeton)
+		http.Redirect(w, r, "/l/"+liste.Slug+"?"+q.Encode()+"#p-"+intention.Jeton, http.StatusSeeOther)
+		return
+	}
 	http.Redirect(w, r, "/i/"+intention.Jeton+"?"+q.Encode(), http.StatusSeeOther)
 }
 
@@ -486,7 +472,7 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 			aVenir = append(aVenir, intentions[k])
 		}
 	}
-	app.rendre(w, "edition.html", map[string]any{
+	app.rendre(w, r, "edition.html", map[string]any{
 		"TitrePage":     liste.Titre + " — édition",
 		"Liste":         liste,
 		"AVenir":        aVenir,
@@ -518,7 +504,7 @@ func (app *App) creerInvitation(w http.ResponseWriter, r *http.Request) {
 		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
-	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?invitation="+code+"#inviter", http.StatusSeeOther)
+	http.Redirect(w, r, "/e/"+liste.JetonEdition+"/inviter?invitation="+code, http.StatusSeeOther)
 }
 
 func (app *App) majListe(w http.ResponseWriter, r *http.Request) {
@@ -542,7 +528,7 @@ func (app *App) majListe(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=lettre#lettre", http.StatusSeeOther)
 }
 
-// reglages : titre, adresse, e-mail — ce qui change rarement, et se relit en pied d'édition.
+// reglages : titre, adresse, e-mail — ce qui change rarement, sur sa propre page derrière le menu.
 func (app *App) reglages(w http.ResponseWriter, r *http.Request) {
 	if app.tropVite(w, r) {
 		return
@@ -563,7 +549,7 @@ func (app *App) reglages(w http.ResponseWriter, r *http.Request) {
 		app.erreur(w, r, http.StatusConflict, "Cette adresse est déjà prise par une autre liste.")
 		return
 	}
-	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=reglages#reglages", http.StatusSeeOther)
+	http.Redirect(w, r, "/e/"+liste.JetonEdition+"/reglages?ok", http.StatusSeeOther)
 }
 
 // quandDepuisForm : la date (avec l'heure si donnée) et, si la perche dure, son dernier jour —

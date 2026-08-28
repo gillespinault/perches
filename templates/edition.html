@@ -14,8 +14,26 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 
 <header class="entete">
 <h1>{{.Liste.Titre}} <span class="discret">édition</span></h1>
-<p class="actions"><a class="bouton sobre" href="/l/{{.Liste.Slug}}" target="_blank" rel="noopener">Voir la page ↗</a>
-<span hidden id="lien-liste">{{.LienPublic}}</span><button type="button" class="sobre" hidden data-copier="lien-liste">Copier le lien</button></p>
+<div class="actions">
+<a class="bouton sobre" href="/l/{{.Liste.Slug}}" target="_blank" rel="noopener">Voir la page ↗</a>
+<span hidden id="lien-liste">{{.LienPublic}}</span><button type="button" class="sobre" hidden data-copier="lien-liste">Copier le lien</button>
+<details class="menu">
+<summary>Menu</summary>
+<nav>
+{{if eq .Politique "invitation"}}<a href="/e/{{.Liste.JetonEdition}}/inviter">Inviter quelqu'un à ouvrir sa liste</a>{{end}}
+<a href="/e/{{.Liste.JetonEdition}}/reglages">Réglages — titre, adresse, e-mail</a>
+<a href="/e/{{.Liste.JetonEdition}}/export.json">Exporter (JSON)</a>
+<hr>
+<form method="post" action="/theme" class="theme"><input type="hidden" name="retour" value="/e/{{.Liste.JetonEdition}}"><span>Thème</span>
+<button name="theme" value="auto"{{if not .Theme}} class="actif"{{end}}>Auto</button><button name="theme" value="clair"{{if eq .Theme "light"}} class="actif"{{end}}>Clair</button><button name="theme" value="sombre"{{if eq .Theme "dark"}} class="actif"{{end}}>Sombre</button></form>
+<hr>
+<a href="/a-propos">À propos</a>
+<a href="https://github.com/gillespinault/perches" rel="noopener">Code source (GitHub)</a>
+<hr>
+<form method="post" action="/oublier"><button class="discret">Se déconnecter de ce navigateur</button></form>
+</nav>
+</details>
+</div>
 <p class="discret">Ta page, à partager : <a href="/l/{{.Liste.Slug}}">{{.LienPublic}}</a></p>
 </header>
 
@@ -127,43 +145,6 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 </div>
 </section>
 {{end}}
-
-{{if eq .Politique "invitation"}}
-<section class="section" id="inviter">
-<h2>Inviter</h2>
-<div>
-<details{{if .Invitation}} open{{end}}>
-<summary>Inviter quelqu'un à ouvrir sa liste</summary>
-<p class="discret">Un lien pour une seule liste, à envoyer à la personne. Pour partager tes perches, c'est le lien de ta page, plus haut.</p>
-{{if .Invitation}}
-<p class="copiable"><code id="lien-invitation">{{.BaseURL}}/?code={{.Invitation}}</code><button type="button" class="discret" hidden data-copier="lien-invitation">copier</button></p>
-{{end}}
-<form method="post" action="/e/{{.Liste.JetonEdition}}/invitations"><button class="sobre">Créer un lien d'invitation</button></form>
-</details>
-</div>
-</section>
-{{end}}
-
-<section class="section" id="reglages">
-<h2>Réglages</h2>
-<div>
-<details{{if eq .OK "reglages"}} open{{end}}>
-<summary>Titre, adresse, e-mail — {{.Liste.Email.String}}</summary>
-{{if eq .OK "reglages"}}<p class="ok">Enregistré.</p>{{end}}
-<form method="post" action="/e/{{.Liste.JetonEdition}}/reglages">
-<label>Titre <input name="titre" required maxlength="80" value="{{.Liste.Titre}}"></label>
-<label>Adresse de la page
-<span class="prefixe"><span>{{.BaseURL}}/l/</span><input name="slug" required pattern="[a-z0-9][a-z0-9-]+" value="{{.Liste.Slug}}" title="minuscules, chiffres, tirets"></span></label>
-<p class="discret">Changer l'adresse casse les liens déjà envoyés.</p>
-<label>E-mail — il renvoie le lien d'édition <input name="email" type="email" required value="{{.Liste.Email.String}}"></label>
-<button class="sobre">Enregistrer</button>
-</form>
-{{if not .Liste.FermeeLe.Valid}}<p class="discret"><a href="/e/{{.Liste.JetonEdition}}/fermer">Fermer la liste…</a> — la page dira « fermée pour le moment » ; tout reste ici.</p>{{end}}
-</details>
-<div class="exports"><a href="/e/{{.Liste.JetonEdition}}/export.json">Exporter (JSON)</a>
-<form method="post" action="/oublier" class="enligne"><button class="discret">Se déconnecter de ce navigateur</button></form></div>
-</div>
-</section>
 {{template "pied" .}}
 
 {{define "statut"}}{{if eq . "jy_serai"}}j'y serai{{else if eq . "peut_etre"}}peut-être{{else}}j'aurais bien aimé{{end}}{{end}}

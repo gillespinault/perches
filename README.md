@@ -52,10 +52,10 @@ listes, liens), puis des perches. L'édition est identifiée par un lien secret 
 compte, pas de mot de passe ; son navigateur s'en souvient, son e-mail le lui renvoie.
 Il partage sa page ou une seule perche là où ses amis sont déjà (WhatsApp, Signal,
 e-mail…) ; le lien s'affiche sous forme de carte. Il consulte son édition quand il veut ;
-rien ne le notifie. Il peut modifier une perche, l'annuler (et la rétablir), effacer une
+rien ne le notifie. Un menu range les gestes rares : inviter, réglages, export, thème. Il peut modifier une perche, l'annuler (et la rétablir), effacer une
 réponse — chaque geste irréversible se confirme — et fermer sa liste.
 
-**L'invité** ouvre le lien, lit, choisit « j'y serai », « peut-être » ou « j'aurais bien aimé », donne un prénom.
+**L'invité** ouvre le lien, lit, ouvre une perche sur place, choisit « j'y serai », « peut-être » ou « j'aurais bien aimé », donne un prénom.
 Il peut laisser une ligne, lue par l'hôte, sans réponse attendue.
 Optionnel : un e-mail pour le rappel de la veille et les changements logistiques, et
 un fichier calendrier. Rien d'autre.

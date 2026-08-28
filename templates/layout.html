@@ -1,5 +1,5 @@
 {{define "entete"}}<!doctype html>
-<html lang="fr">
+<html lang="fr"{{with .Theme}} data-theme="{{.}}"{{end}}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -26,7 +26,7 @@
 {{define "pied"}}
 </main>
 <footer>
-<p><img src="/static/logo.svg" alt="" class="marque"> Perches — des intentions, sans obligation.</p>
+<p><img src="/static/logo.svg" alt="" class="marque"> Perches — des intentions, sans obligation. <a href="/a-propos">À propos</a></p>
 </footer>
 <script>
 // Seule touche de JavaScript : un bouton « copier », affiché uniquement si le presse-papiers est disponible.
@@ -44,7 +44,7 @@ document.querySelectorAll("[data-copier]").forEach(function (b) {
   var titre = document.querySelector('form[action="/listes"] input[name=titre]');
   if (!apercu || !titre) return;
   function slug(t) {
-    t = t.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/œ/g, "o").replace(/æ/g, "a");
+    t = t.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/œ/g, "o").replace(/æ/g, "a");
     t = t.replace(/^(les |la |le )?(perches?|liste) (de |d['’])/, "");
     t = t.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
     return t || "liste";

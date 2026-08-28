@@ -1,0 +1,10 @@
+{{template "entete" .}}
+<p class="fil"><a href="/e/{{.Liste.JetonEdition}}">← {{.Liste.Titre}}, édition</a></p>
+<h1>Inviter quelqu'un à ouvrir sa liste</h1>
+<p>Un lien d'invitation vaut pour une seule liste, à envoyer à la personne. Pour partager tes perches, c'est le lien de ta page.</p>
+{{if .Invitation}}
+<p class="copiable"><code id="lien-invitation">{{.BaseURL}}/?code={{.Invitation}}</code><button type="button" class="discret" hidden data-copier="lien-invitation">copier</button></p>
+<p class="discret">Valable trente jours.</p>
+{{end}}
+<form method="post" action="/e/{{.Liste.JetonEdition}}/invitations"><button{{if .Invitation}} class="sobre"{{end}}>Créer un lien d'invitation</button></form>
+{{template "pied" .}}

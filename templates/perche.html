@@ -1,0 +1,47 @@
+{{/* Le corps d'une perche — le même sur sa page et dans sa carte de la liste (lot B2). Reçoit une VuePerche. */}}
+{{define "perche-corps"}}
+{{with .Merci}}
+<aside class="merci">
+<p><strong>Réponse enregistrée : {{if eq .Statut "peut_etre"}}peut-être{{else if eq .Statut "jaurais_aime"}}j'aurais bien aimé{{else}}j'y serai{{end}}.</strong></p>
+{{if eq .Statut "jaurais_aime"}}{{if .AvecEmail}}<p>Un e-mail te parviendra seulement si la date ou le lieu change.</p>{{end}}
+{{else if .AvecEmail}}<p>Un rappel la veille, et un e-mail seulement si la date ou le lieu change.</p>
+{{else}}<p>Sans e-mail, revérifie la page avant d'y aller : c'est là qu'apparaîtrait une annulation ou un changement.</p>{{end}}
+</aside>
+{{end}}
+{{with .I.Description}}<div class="description">{{md .}}</div>{{end}}
+{{if .Ouverte}}
+<p class="engagement">J'y vais de toute façon.</p>
+{{with .Presences}}<p class="qui">{{.}}</p>{{end}}
+{{with .PeutEtre}}<p class="qui">Peut-être : {{joindre . ", "}}.</p>{{end}}
+{{with .AuraitAime}}<p class="qui">{{.}}</p>{{end}}
+<form method="post" action="/i/{{.I.Jeton}}/reponses" class="reponse">
+{{if .DepuisListe}}<input type="hidden" name="retour" value="liste">{{end}}
+<fieldset>
+<legend>Si ça te dit</legend>
+<label><input type="radio" name="statut" value="jy_serai" required> J'y serai</label>
+<label><input type="radio" name="statut" value="peut_etre"> Peut-être</label>
+<label><input type="radio" name="statut" value="jaurais_aime"> J'aurais bien aimé</label>
+</fieldset>
+<label class="site" aria-hidden="true">Ne rien écrire ici <input name="verif" tabindex="-1" autocomplete="off"></label>
+<label>Prénom
+<input name="prenom" required maxlength="60" autocomplete="given-name"></label>
+<details class="plus">
+<summary>Un mot, un rappel la veille</summary>
+<label>Un mot — une ligne, lue par {{.Liste.Titre}}
+<input name="mot" maxlength="200"></label>
+<label class="case"><input type="checkbox" name="prenom_visible" value="1" checked>
+Mon prénom peut apparaître sur cette page</label>
+<label>E-mail — pour un rappel la veille et si la date ou le lieu change ; effacé un mois après
+<input name="email" type="email" autocomplete="email"></label>
+</details>
+<button>Répondre</button>
+<p class="silence">Ne pas répondre est aussi une réponse. Redonner son prénom remplace une réponse précédente.</p>
+</form>
+{{else if .Liste.FermeeLe.Valid}}
+<p class="passee">{{.Liste.Titre}} est fermée pour le moment.</p>
+{{else if not .I.AnnuleeLe.Valid}}
+<p class="passee">C'est passé.</p>
+{{end}}
+{{end}}
+
+{{define "perche-meta"}}<p class="meta"><b>{{.QuandFR}}</b>{{with .Lieu}} · {{.}}{{end}}{{if .URLExterne.Valid}} · <a href="{{.URLExterne.String}}" rel="noopener" title="{{.URLExterne.String}}">site ↗</a>{{end}}</p>{{end}}
