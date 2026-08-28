@@ -25,6 +25,7 @@ var schemaSQL string
 
 type App struct {
 	db        *sql.DB
+	cheminDB  string // pour la copie de sauvegarde (vide dans certains tests)
 	mailer    Mailer
 	tpl       *template.Template
 	politique string // ouverte | invitation | fermee
@@ -43,7 +44,8 @@ func main() {
 	nouveauCode := flag.Bool("nouveau-code", false, "génère un code d'invitation et sort")
 	flag.Parse()
 
-	db, err := ouvrirDB(env("PERCHES_DB", "data/perches.db"))
+	cheminDB := env("PERCHES_DB", "data/perches.db")
+	db, err := ouvrirDB(cheminDB)
 	if err != nil {
 		log.Fatalf("base : %v", err)
 	}
@@ -60,6 +62,7 @@ func main() {
 
 	app := &App{
 		db:            db,
+		cheminDB:      cheminDB,
 		mailer:        mailerDepuisEnv(),
 		tpl:           chargerTemplates(),
 		politique:     env("PERCHES_POLITIQUE", "ouverte"),

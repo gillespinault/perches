@@ -37,14 +37,15 @@ func (m *MailerTest) Envoyer(dest, sujet, corps string) error {
 
 func appTest(t *testing.T) (*App, *MailerTest) {
 	t.Helper()
-	db, err := ouvrirDB(filepath.Join(t.TempDir(), "test.db"))
+	chemin := filepath.Join(t.TempDir(), "test.db")
+	db, err := ouvrirDB(chemin)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
 	m := &MailerTest{}
 	return &App{
-		db: db, mailer: m, tpl: chargerTemplates(),
+		db: db, cheminDB: chemin, mailer: m, tpl: chargerTemplates(),
 		politique: "ouverte", baseURL: "http://perches.test", limiteur: nouveauLimiteur(),
 		synchrone: true, csp: cspPour(chargerTemplates()),
 	}, m

@@ -13,6 +13,10 @@ func (app *App) boucleRappels() {
 			app.envoyerRappels()
 		}
 		app.purgerEmails()
+		// Une copie cohérente de la base, à côté d'elle, pour la sauvegarde de l'hôte.
+		if err := app.sauvegarder(); err != nil {
+			log.Printf("sauvegarde : %v", err)
+		}
 		time.Sleep(time.Hour)
 	}
 }

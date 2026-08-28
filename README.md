@@ -119,6 +119,10 @@ Variables d'environnement : `PERCHES_DB` (chemin SQLite), `PERCHES_ADDR`,
 `PERCHES_SMTP_HOTE/PORT/UTILISATEUR/MDP/DE` (sans SMTP, les courriels sont
 journalisés). Un lien d'invitation (`/?code=…`, à envoyer à la personne) se génère avec `perches -nouveau-code`.
 
+Toutes les heures, l'instance écrit une copie cohérente de sa base à côté d'elle
+(`perches.sauvegarde.db`, par `VACUUM INTO`) : la sauvegarde de l'hôte n'a qu'à emporter
+le dossier de données, sans se soucier d'une écriture en cours.
+
 Les conventions sont encodées dans la suite de tests : `go test ./...`
 (voir [docs/tests-conventions.md](docs/tests-conventions.md)).
 
