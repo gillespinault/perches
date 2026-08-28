@@ -1,7 +1,7 @@
 {{template "entete" .}}
 <h1>{{.Liste.Titre}} <span class="discret">· édition</span></h1>
 <p class="resume">{{len .AVenir}} intention(s) à venir · {{.TotalReponses}} réponse(s) en tout.</p>
-<p>Lien public à partager : <code>{{.BaseURL}}/l/{{.Liste.Slug}}</code></p>
+<p>Ta page publique, à partager : <a href="/l/{{.Liste.Slug}}"><code>{{.BaseURL}}/l/{{.Liste.Slug}}</code></a></p>
 
 <section>
 <h2>À venir</h2>
@@ -64,8 +64,10 @@
 <section>
 <h2>Ta page</h2>
 <form method="post" action="/e/{{.Liste.JetonEdition}}">
-<label>Ta lettre <textarea name="lettre" rows="6">{{.Liste.Lettre}}</textarea></label>
-<label>Ton état <input name="etat" value="{{.Liste.Etat}}"></label>
+<label>Ta lettre — s'affiche telle quelle en tête de ta page publique
+<textarea name="lettre" rows="6">{{.Liste.Lettre}}</textarea></label>
+<label>En ce moment — une ligne sous le titre, optionnelle
+<input name="etat" value="{{.Liste.Etat}}"></label>
 <label>E-mail de récupération <input name="email" type="email" value="{{.Liste.Email.String}}"></label>
 <button>Enregistrer</button>
 </form>
@@ -90,6 +92,18 @@ toi tu gardes tes lettres.</p>
 {{else}}
 <p class="vide">Rien encore.</p>
 {{end}}
+</section>
+
+<section id="inviter">
+<h2>Inviter quelqu'un à ouvrir sa liste</h2>
+{{if .Invitation}}
+<p>Voici un lien à envoyer — il vaut pour une seule liste :</p>
+<p class="copiable"><code id="lien-invitation">{{.BaseURL}}/?code={{.Invitation}}</code>
+<button type="button" class="sobre" hidden data-copier="lien-invitation">copier</button></p>
+{{end}}
+<form method="post" action="/e/{{.Liste.JetonEdition}}/invitations">
+<button class="sobre">Générer un lien d'invitation</button>
+</form>
 </section>
 
 <p class="exports"><a href="/e/{{.Liste.JetonEdition}}/export.json">tout exporter (JSON)</a></p>

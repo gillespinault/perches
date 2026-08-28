@@ -17,8 +17,19 @@
 {{define "pied"}}
 </main>
 <footer>
-<p>Perches — le silence vaut « pas cette fois ».</p>
+<p>Perches — des intentions, sans obligation.</p>
 </footer>
+<script>
+// Seule touche de JavaScript : un bouton « copier », affiché uniquement si le presse-papiers est disponible.
+document.querySelectorAll("[data-copier]").forEach(function (b) {
+  if (!navigator.clipboard) return;
+  b.hidden = false;
+  b.addEventListener("click", function () {
+    navigator.clipboard.writeText(document.getElementById(b.dataset.copier).textContent.trim())
+      .then(function () { b.textContent = "copié"; });
+  });
+});
+</script>
 </body>
 </html>
 {{end}}

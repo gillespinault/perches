@@ -119,3 +119,9 @@ footer {
   font-size: .85rem;
   border-top: 1px solid var(--trait);
 }
+
+.prefixe { display: flex; align-items: center; gap: .3rem; }
+.prefixe > span { color: var(--doux); white-space: nowrap; font-size: .95rem; }
+.prefixe input { flex: 1; }
+.copiable { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.copiable button { padding: .25rem .7rem; font-size: .9rem; }

@@ -3,8 +3,7 @@
 <p class="citation">« Pour info, j'ai l'intention de faire telle activité, à tel moment.
 Si quelqu'un veut se joindre à moi, ça me fait plaisir. »</p>
 <p>Une liste d'intentions, sans obligation. Tes amis n'ont besoin de rien :
-un lien, un prénom, un geste. Pas de compte, pas de fil de discussion,
-pas de bouton pour refuser — le silence vaut « pas cette fois ».</p>
+un lien, un prénom, un geste. Pas de compte, pas de fil de discussion.</p>
 
 <section>
 <h2>Créer ta liste</h2>
@@ -13,18 +12,19 @@ pas de bouton pour refuser — le silence vaut « pas cette fois ».</p>
 {{else}}
 <form method="post" action="/listes">
 {{if eq .Politique "invitation"}}
-<label>Code d'invitation
-<input name="code" required></label>
+<label>Code d'invitation (reçu d'un ami qui a déjà sa liste)
+<input name="code" required value="{{.Code}}"></label>
 {{end}}
 <label>Le titre de ta liste
 <input name="titre" required placeholder="Les perches de Camille"></label>
-<label>Son adresse (minuscules, chiffres, tirets)
-<input name="slug" required pattern="[a-z0-9][a-z0-9-]+" placeholder="camille"></label>
-<label>Ta lettre — quelques lignes libres, dans ta voix
-<textarea name="lettre" rows="6"></textarea></label>
-<label>Ton état, si tu veux l'afficher
-<input name="etat" placeholder="je rouvre doucement"></label>
-<label>E-mail (optionnel — sert uniquement à retrouver ton lien d'édition)
+<label>L'adresse de ta page publique — celle que tu partageras
+<span class="prefixe"><span>{{.BaseURL}}/l/</span><input name="slug" required pattern="[a-z0-9][a-z0-9-]+" placeholder="camille" title="minuscules, chiffres, tirets"></span></label>
+<label>Ta lettre — le texte qui ouvre ta page publique, juste sous le titre.
+Elle s'affiche telle quelle, sauts de ligne compris ; tu pourras la relire et la retoucher ensuite.
+<textarea name="lettre" rows="6" placeholder="Bonjour,&#10;voici les envies du moment, dans le désordre…"></textarea></label>
+<label>En ce moment (optionnel) — une ligne affichée sous le titre, si tu veux dire où tu en es
+<input name="etat" placeholder="plutôt disponible ces temps-ci"></label>
+<label>Ton e-mail (optionnel) — sert uniquement à te renvoyer ton lien d'édition si tu le perds
 <input name="email" type="email"></label>
 <button>Créer la liste</button>
 </form>

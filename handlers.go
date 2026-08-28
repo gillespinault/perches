@@ -70,6 +70,8 @@ func (app *App) accueil(w http.ResponseWriter, r *http.Request) {
 	app.rendre(w, "accueil.html", map[string]any{
 		"TitrePage": "Perches",
 		"Politique": app.politique,
+		"BaseURL":   app.baseURL,
+		"Code":      strings.TrimSpace(r.URL.Query().Get("code")),
 	})
 }
 
@@ -319,6 +321,7 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 		"Passees":       passees,
 		"TotalReponses": total,
 		"BaseURL":       app.baseURL,
+		"Invitation":    r.URL.Query().Get("invitation"),
 	})
 }
 
@@ -428,7 +431,7 @@ func (app *App) notifierLogistique(intentionID int64, sujet, message string) {
 			dests = append(dests, d)
 		}
 	}
-	corps := message + "\n\nRien ne t'est demandé : le silence vaut « pas cette fois »."
+	corps := message + "\n\nRien ne t'est demandé."
 	for _, d := range dests {
 		app.envoyer(d.email, "Perches — "+sujet, corps, "logistique", d.id, 0)
 	}
@@ -487,4 +490,24 @@ func (app *App) effacerReponse(w http.ResponseWriter, r *http.Request) {
 	app.db.Exec(`DELETE FROM reponses WHERE id = ?
 		AND intention_id IN (SELECT id FROM intentions WHERE liste_id = ?)`, id, liste.ID)
 	http.Redirect(w, r, "/e/"+liste.JetonEdition, http.StatusSeeOther)
+}
+
+// creerInvitation : un hôte invite quelqu'un à ouvrir sa propre liste. Le code est
+// à usage unique ; il est montré une fois, sous forme de lien prérempli, sur la page
+// d'édition (redirection après POST pour qu'un rechargement ne crée pas de doublon).
+func (app *App) creerInvitation(w http.ResponseWriter, r *http.Request) {
+	if app.tropVite(w, r) {
+		return
+	}
+	liste, err := app.listeParJetonEdition(r.PathValue("jeton"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	code := jeton(4)
+	if _, err := app.db.Exec(`INSERT INTO codes_invitation (code) VALUES (?)`, code); err != nil {
+		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?invitation="+code+"#inviter", http.StatusSeeOther)
 }

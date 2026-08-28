@@ -535,6 +535,34 @@ func TestDecision_CodeInvitationRequis(t *testing.T) {
 	}
 }
 
+func TestDecision_UnHoteInviteLeSuivant(t *testing.T) {
+	app, _ := appTest(t)
+	app.politique = "invitation"
+	listeTest(t, app)
+	rec := POST(app, "/e/edtest/invitations", url.Values{})
+	if rec.Code != 303 {
+		t.Fatalf("la génération doit rediriger vers l'édition, reçu %d", rec.Code)
+	}
+	loc := rec.Header().Get("Location")
+	code := strings.TrimSuffix(strings.TrimPrefix(loc, "/e/edtest?invitation="), "#inviter")
+	if len(code) != 8 {
+		t.Fatalf("redirection inattendue : %q", loc)
+	}
+	if page := GET(app, loc).Body.String(); !strings.Contains(page, "/?code="+code) {
+		t.Fatal("la page d'édition doit montrer le lien d'invitation prérempli")
+	}
+	if page := GET(app, "/?code="+code).Body.String(); !strings.Contains(page, `value="`+code+`"`) {
+		t.Fatal("l'accueil doit préremplir le code reçu par le lien")
+	}
+	form := url.Values{"titre": {"Les perches de Léa"}, "slug": {"lea"}, "code": {code}}
+	if rec := POST(app, "/listes", form); rec.Code != 200 {
+		t.Fatalf("le code généré doit permettre la création, reçu %d", rec.Code)
+	}
+	if rec := POST(app, "/e/inconnu/invitations", url.Values{}); rec.Code != 404 {
+		t.Fatalf("sans jeton d'édition valide, pas de code, reçu %d", rec.Code)
+	}
+}
+
 // ---- hors périmètre : le test d'absence ----
 
 func TestHorsPerimetre_LeSchemaResteMaigre(t *testing.T) {

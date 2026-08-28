@@ -21,3 +21,6 @@ Une ligne datée par choix. Contexte complet : document projet dans le wiki.
 - 2026-08-27 — Identité de l'invité : rien — pas même un cookie. Répondre est un POST anonyme portant un prénom.
 - 2026-08-27 — Rappels de la veille : boucle horaire in-process, idempotente via le journal `envois`. Pas de cron externe.
 - 2026-08-27 — Effacement public des réponses : 30 jours après la date de l'intention. La v0 exige une date (« à fixer » viendra avec la variante ouverte).
+- 2026-08-28 — Codes d'invitation générés depuis la page d'édition : un hôte invite le suivant, lien prérempli (`/?code=…`). Une seule touche de JavaScript, en amélioration progressive : le bouton « copier ».
+- 2026-08-28 — Le « silence vaut pas cette fois » reste une convention du système, pas un slogan : une mention douce sur la page de réponse, rien en pied de page ni à l'accueil.
+- 2026-08-28 — « État » reste le mot du domaine (schéma, README) ; à l'écran il devient « En ce moment », pour ne pas sonner comme un diagnostic.
