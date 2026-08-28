@@ -1,7 +1,9 @@
 {{template "entete" .}}
-<h1>C'est noté{{if eq .Statut "peut_etre"}} — peut-être{{end}}.</h1>
+<h1>C'est noté{{if eq .Statut "peut_etre"}} — peut-être{{else if eq .Statut "jaurais_aime"}} — et ça fait plaisir quand même{{end}}.</h1>
 <p>{{.Prenom}}, ta réponse est déposée. Rien d'autre ne t'est demandé.</p>
-{{if .AvecEmail}}
+{{if eq .Statut "jaurais_aime"}}
+<p>Une prochaine fois, peut-être. Un mot te parviendra seulement si la date ou le lieu change.</p>
+{{else if .AvecEmail}}
 <p>Tu recevras un rappel la veille, et un mot seulement si la date ou le lieu change.</p>
 {{else}}
 <p>Revérifie la page avant d'y aller — c'est là que vivraient une annulation

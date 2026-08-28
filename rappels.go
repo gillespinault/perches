@@ -22,6 +22,7 @@ func (app *App) envoyerRappels() {
 		FROM reponses r
 		JOIN intentions i ON i.id = r.intention_id
 		WHERE r.email IS NOT NULL
+		  AND r.statut <> 'jaurais_aime'
 		  AND i.annulee_le IS NULL
 		  AND i.quand IS NOT NULL
 		  AND date(i.quand) = date('now', 'localtime', '+1 day')

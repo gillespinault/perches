@@ -138,3 +138,6 @@ details.pied-page { margin-top: 3rem; font-size: .9rem; }
 details.pied-page summary { color: var(--doux); }
 details > label { display: block; }
 button .discret { color: inherit; opacity: .75; }
+
+/* pot de miel : hors de vue, hors du flux, jamais rempli par un humain */
+label.site { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }

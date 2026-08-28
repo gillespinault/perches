@@ -27,3 +27,5 @@ Une ligne datée par choix. Contexte complet : document projet dans le wiki.
 - 2026-08-28 — Vocabulaire à l'écran : « atelier » pour la page d'édition, « clé » pour le lien secret, « perche tendue » pour une intention à venir. Le formulaire d'une perche montre quatre champs ; le reste sous « Plus d'options ».
 - 2026-08-28 — Le « silence vaut pas cette fois » reste une convention du système, pas un slogan : une mention douce sur la page de réponse, rien en pied de page ni à l'accueil.
 - 2026-08-28 — « État » reste le mot du domaine (schéma, README) ; à l'écran il devient « En ce moment », pour ne pas sonner comme un diagnostic.
+- 2026-08-28 — Troisième réponse « ah zut, j'aurais bien aimé », à part entière et visible comme les autres : elle dit l'envie, pas l'absence. Le « non » reste impossible. Pas de rappel de la veille pour qui ne vient pas.
+- 2026-08-28 — Anti-nuisance sans friction : pot de miel sur le formulaire de réponse, `noindex` sur toutes les pages (on n'y arrive que par un lien), limite de débit par IP. Rien qui demande quoi que ce soit à un humain.

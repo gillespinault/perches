@@ -209,16 +209,19 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app.chargerReponses(intention)
-	var jySerai, peutEtre []string
+	var jySerai, peutEtre, auraitAime []string
 	if !intention.ReponsesEffacees() {
 		for _, rep := range intention.Reponses {
 			if !rep.PrenomVisible {
 				continue
 			}
-			if rep.Statut == "jy_serai" {
+			switch rep.Statut {
+			case "jy_serai":
 				jySerai = append(jySerai, rep.Prenom)
-			} else {
+			case "peut_etre":
 				peutEtre = append(peutEtre, rep.Prenom)
+			default:
+				auraitAime = append(auraitAime, rep.Prenom)
 			}
 		}
 	}
@@ -227,13 +230,14 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 		ogDesc += " — " + intention.Lieu
 	}
 	app.rendre(w, "intention.html", map[string]any{
-		"TitrePage":        intention.Titre,
-		"OG":               map[string]string{"Titre": intention.Titre, "Description": ogDesc, "URL": app.baseURL + "/i/" + intention.Jeton},
-		"Liste":            liste,
-		"I":                intention,
-		"PrenomsJySerai":   jySerai,
-		"PrenomsPeutEtre":  peutEtre,
-		"FormulaireOuvert": !intention.AnnuleeLe.Valid && !intention.Passee(),
+		"TitrePage":         intention.Titre,
+		"OG":                map[string]string{"Titre": intention.Titre, "Description": ogDesc, "URL": app.baseURL + "/i/" + intention.Jeton},
+		"Liste":             liste,
+		"I":                 intention,
+		"PrenomsJySerai":    jySerai,
+		"PrenomsPeutEtre":   peutEtre,
+		"PrenomsAuraitAime": auraitAime,
+		"FormulaireOuvert":  !intention.AnnuleeLe.Valid && !intention.Passee(),
 	})
 }
 
@@ -258,8 +262,13 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Un prénom suffit — mais il en faut un.", http.StatusBadRequest)
 		return
 	}
-	if statut != "jy_serai" && statut != "peut_etre" {
-		http.Error(w, "Les seules réponses possibles sont « j'y serai » et « peut-être ».", http.StatusBadRequest)
+	if statut != "jy_serai" && statut != "peut_etre" && statut != "jaurais_aime" {
+		http.Error(w, "Les réponses possibles : « j'y serai », « peut-être », « j'aurais bien aimé ».", http.StatusBadRequest)
+		return
+	}
+	// Pot de miel : un champ invisible qu'un humain ne remplit pas. On répond comme si de rien.
+	if r.FormValue("verif") != "" {
+		http.Redirect(w, r, "/i/"+intention.Jeton, http.StatusSeeOther)
 		return
 	}
 	if strings.ContainsAny(mot, "\r\n") || len([]rune(mot)) > 200 {

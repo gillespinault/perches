@@ -29,7 +29,7 @@ Mets-la en favori ou range-la quelque part :</p>
 <span class="copiable"><span id="lien-i-{{.ID}}">{{$.BaseURL}}/i/{{.Jeton}}</span><button type="button" class="discret" hidden data-copier="lien-i-{{.ID}}">copier</button></span></p>
 <ul class="reponses">
 {{range .Reponses}}
-<li>{{.Prenom}} — {{if eq .Statut "jy_serai"}}j'y serai{{else}}peut-être{{end}}{{with .Mot}} · « {{.}} »{{end}}
+<li>{{.Prenom}} — {{template "statut" .Statut}}{{with .Mot}} · « {{.}} »{{end}}
 <form method="post" action="/e/{{$.Liste.JetonEdition}}/reponses/{{.ID}}/effacer" class="enligne"><button class="discret">effacer</button></form></li>
 {{else}}
 <li class="vide">Pas encore de réponse — et c'est très bien aussi.</li>
@@ -90,7 +90,7 @@ Mets-la en favori ou range-la quelque part :</p>
 <p class="quand">{{quandfr .Quand}}{{with .Lieu}} — {{.}}{{end}}{{if .AnnuleeLe.Valid}} · annulée{{end}}</p>
 <ul class="reponses">
 {{range .Reponses}}
-<li>{{.Prenom}} — {{if eq .Statut "jy_serai"}}j'y serai{{else}}peut-être{{end}}{{with .Mot}} · « {{.}} »{{end}}</li>
+<li>{{.Prenom}} — {{template "statut" .Statut}}{{with .Mot}} · « {{.}} »{{end}}</li>
 {{else}}
 <li class="vide">Sans réponse.</li>
 {{end}}
@@ -102,6 +102,8 @@ Mets-la en favori ou range-la quelque part :</p>
 
 <p class="exports"><a href="/e/{{.Liste.JetonEdition}}/export.json">tout exporter (JSON)</a></p>
 {{template "pied" .}}
+
+{{define "statut"}}{{if eq . "jy_serai"}}j'y serai{{else if eq . "peut_etre"}}peut-être{{else}}j'aurais bien aimé{{end}}{{end}}
 
 {{define "section-lettre"}}
 <section id="lettre">

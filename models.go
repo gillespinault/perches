@@ -224,9 +224,10 @@ func (app *App) chargerReponses(i *Intention) error {
 			&r.PrenomVisible, &r.Email, &r.CreeLe); err != nil {
 			return err
 		}
-		if r.Statut == "jy_serai" {
+		switch r.Statut {
+		case "jy_serai":
 			i.NbJySerai++
-		} else {
+		case "peut_etre":
 			i.NbPeutEtre++
 		}
 		i.Reponses = append(i.Reponses, r)

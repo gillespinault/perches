@@ -29,7 +29,7 @@ Elles sont le produit ; tout le reste est de la plomberie. Elles vivent dans la
 structure — boutons, champs, absence de champs — et sont encodées en tests.
 
 1. Le silence vaut « pas cette fois ».
-2. Aucun signal négatif n'existe dans le système.
+2. Aucun signal négatif n'existe dans le système. Trois réponses — « j'y serai », « peut-être », « ah zut, j'aurais bien aimé » — et aucune n'est un refus.
 3. Pas de fil de discussion. Au plus une ligne, lue, sans réponse attendue.
 4. Capacité affichée sur chaque intention — indicative, jamais bloquante.
 5. « J'y vais de toute façon » par défaut.

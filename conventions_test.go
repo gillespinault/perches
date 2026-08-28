@@ -5,6 +5,7 @@ package main
 // est une PR qui demande à changer le produit.
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
@@ -164,11 +165,13 @@ func TestConv02_AucunBoutonNon(t *testing.T) {
 	if strings.Contains(bas, `value="non"`) || strings.Contains(bas, ">non<") {
 		t.Fatal("un contrôle de refus existe sur la page")
 	}
-	if n := strings.Count(body, `name="statut"`); n != 2 {
-		t.Fatalf("attendu exactement 2 choix de statut (j'y serai, peut-être), trouvé %d", n)
+	if n := strings.Count(body, `name="statut"`); n != 3 {
+		t.Fatalf("attendu exactement 3 choix (j'y serai, peut-être, j'aurais bien aimé), trouvé %d", n)
 	}
-	if !strings.Contains(body, `value="jy_serai"`) || !strings.Contains(body, `value="peut_etre"`) {
-		t.Fatal("les deux seuls statuts attendus manquent")
+	for _, v := range []string{"jy_serai", "peut_etre", "jaurais_aime"} {
+		if !strings.Contains(body, `value="`+v+`"`) {
+			t.Fatalf("le choix %s manque", v)
+		}
 	}
 }
 
@@ -556,6 +559,65 @@ func TestDecision_InvitationInvisiblePourLesInvites(t *testing.T) {
 	page := GET(app, loc).Body.String()
 	if !strings.Contains(page, "/l/lea") || !strings.Contains(page, strings.TrimSuffix(loc, "?bienvenue=1")) {
 		t.Fatal("l'édition de bienvenue montre les deux liens : public et secret")
+	}
+}
+
+func TestConv02_AhZutEstUneVraieReponse(t *testing.T) {
+	app, m := appTest(t)
+	listeTest(t, app)
+	i := intentionTest(t, app, dans(1), "KIKK", "page", nil)
+	repondreTest(t, app, i.Jeton, "Anna", "jaurais_aime", "une prochaine fois", "anna@exemple.be")
+	page := GET(app, "/i/"+i.Jeton).Body.String()
+	if !strings.Contains(page, "Auraient bien aimé : Anna") {
+		t.Fatal("« j'aurais bien aimé » s'affiche comme les autres réponses")
+	}
+	if !strings.Contains(GET(app, "/e/edtest").Body.String(), "une prochaine fois") {
+		t.Fatal("l'hôte lit le mot")
+	}
+	app.envoyerRappels()
+	if len(m.Envois) != 0 {
+		t.Fatal("pas de rappel de la veille à qui ne vient pas")
+	}
+}
+
+func TestDecision_PotDeMiel(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	rec := POST(app, "/i/"+i.Jeton+"/reponses", url.Values{"prenom": {"Bot"}, "statut": {"jy_serai"}, "verif": {"http://spam"}})
+	if rec.Code != 303 {
+		t.Fatalf("un robot qui remplit le champ caché est redirigé sans bruit, reçu %d", rec.Code)
+	}
+	var n int
+	app.db.QueryRow(`SELECT count(*) FROM reponses`).Scan(&n)
+	if n != 0 {
+		t.Fatal("la réponse du robot ne doit pas être enregistrée")
+	}
+}
+
+func TestDecision_MigrationTroisiemeStatut(t *testing.T) {
+	db, err := sql.Open("sqlite", "file::memory:?_pragma=foreign_keys(1)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.SetMaxOpenConns(1)
+	ancien := strings.Replace(schemaSQL, "'peut_etre', 'jaurais_aime'", "'peut_etre'", 1)
+	if _, err := db.Exec(ancien); err != nil {
+		t.Fatal(err)
+	}
+	db.Exec(`INSERT INTO listes (slug, jeton_edition, titre, lettre, etat) VALUES ('t','e','T','','')`)
+	db.Exec(`INSERT INTO intentions (liste_id, jeton, titre, quand) VALUES (1,'j','I','2030-01-01T10:00')`)
+	db.Exec(`INSERT INTO reponses (intention_id, prenom, statut) VALUES (1,'Anna','jy_serai')`)
+	if err := migrer(db); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO reponses (intention_id, prenom, statut) VALUES (1,'Léa','jaurais_aime')`); err != nil {
+		t.Fatalf("après migration le troisième statut passe : %v", err)
+	}
+	var n int
+	db.QueryRow(`SELECT count(*) FROM reponses`).Scan(&n)
+	if n != 2 {
+		t.Fatalf("les réponses existantes sont conservées, trouvé %d", n)
 	}
 }
 

@@ -41,12 +41,13 @@ CREATE TABLE intentions (
     CHECK (quand IS NOT NULL OR echeance_decision IS NOT NULL)
 );
 
--- Il n'existe que deux statuts. Le « non » n'existe pas, par contrainte.
+-- Trois réponses, aucune n'est un refus : « j'aurais bien aimé » dit l'envie, pas l'absence.
+-- Le « non » n'existe pas, par contrainte.
 CREATE TABLE reponses (
     id             INTEGER PRIMARY KEY,
     intention_id   INTEGER NOT NULL REFERENCES intentions(id) ON DELETE CASCADE,
     prenom         TEXT NOT NULL,
-    statut         TEXT NOT NULL CHECK (statut IN ('jy_serai', 'peut_etre')),
+    statut         TEXT NOT NULL CHECK (statut IN ('jy_serai', 'peut_etre', 'jaurais_aime')),
     mot            TEXT NOT NULL DEFAULT '', -- une ligne, lue par l'hôte, sans réponse attendue
     prenom_visible INTEGER NOT NULL DEFAULT 1,
     email          TEXT,                     -- rappel la veille + logistique, optionnel
