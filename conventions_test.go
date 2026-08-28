@@ -1604,14 +1604,12 @@ func TestDecision_ImageDuSiteDeLEvenement(t *testing.T) {
 	if !strings.Contains(GET(app, "/l/test").Body.String(), `class="illustration" src="/i/`+j+`/image.jpg"`) {
 		t.Fatal("la carte montre l'image")
 	}
-	carte := GET(app, "/i/"+j+".png")
-	if c, err := png.Decode(bytes.NewReader(carte.Body.Bytes())); err != nil || c.Bounds().Dx() != 1200 || c.Bounds().Dy() != 630 {
-		t.Fatal("l'aperçu composé garde le format")
+	carte := GET(app, "/i/"+j+".jpg")
+	cimg, _, err := image.Decode(bytes.NewReader(carte.Body.Bytes()))
+	if err != nil || cimg.Bounds().Dx() != 1200 || cimg.Bounds().Dy() != 630 || carte.Body.Len() > 300<<10 {
+		t.Fatalf("l'aperçu composé garde le format et reste sous 300 Ko (%d)", carte.Body.Len())
 	}
-	if r, g, b, _ := (func() (uint32, uint32, uint32, uint32) {
-		c, _ := png.Decode(bytes.NewReader(carte.Body.Bytes()))
-		return c.At(600, 100).RGBA()
-	})(); r>>8 == 0xf3 && g>>8 == 0xf3 && b>>8 == 0xef {
+	if r, g, b, _ := cimg.At(600, 100).RGBA(); r>>8 > 0xe0 && g>>8 > 0xe0 && b>>8 > 0xe0 {
 		t.Fatal("la photo occupe le haut de l'aperçu")
 	}
 	// « Sans image » : retirée, et plus jamais cherchée — même en changeant le lien
