@@ -18,7 +18,7 @@ indicative, et la mention « j'y vais de toute façon ». Ce qui la distingue d'
 invitation :
 
 - **Elle ne demande rien.** Aucune réponse n'est attendue ; le silence vaut « pas cette fois ».
-- **Elle n'a pas de négatif.** On peut dire « j'y serai » ou « peut-être ». Il n'existe pas de bouton « non » — ni pour l'invité (aucun refus à formuler), ni pour l'hôte (aucun refus à lire).
+- **Elle n'a pas de négatif.** On peut dire « j'y serai », « peut-être » ou « ah zut, j'aurais bien aimé » — cette dernière dit l'envie, pas l'absence. Il n'existe pas de bouton « non » — ni pour l'invité (aucun refus à formuler), ni pour l'hôte (aucun refus à lire).
 - **Elle est bornée.** Une date, une durée implicite. Elle se termine d'elle-même.
 - **Elle est asymétrique et l'assume.** L'hôte y va de toute façon ; l'invité s'ajoute ou non. Personne ne dépend de personne.
 - **Elle porte son mode d'emploi.** Les conventions sont affichées par l'outil, pas par la personne.
@@ -49,7 +49,7 @@ de mot de passe. Il partage la liste ou une seule intention là où ses amis son
 (WhatsApp, Signal, e-mail, Mastodon…) ; le lien s'affiche sous forme de carte. Il
 consulte un résumé quand il veut ; rien ne le notifie.
 
-**L'invité** ouvre le lien, lit, tape « j'y serai » ou « peut-être », donne un prénom.
+**L'invité** ouvre le lien, lit, choisit « j'y serai », « peut-être » ou « ah zut, j'aurais bien aimé », donne un prénom.
 Il peut laisser une ligne, lue par l'hôte, sans réponse attendue — l'outil le dit.
 Optionnel : un e-mail pour le rappel de la veille et les changements logistiques, et
 un fichier calendrier. Rien d'autre.

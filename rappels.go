@@ -34,7 +34,9 @@ func (app *App) envoyerRappels() {
 		SELECT r.id, r.email, r.prenom, i.titre, i.quand, i.lieu, i.jeton
 		FROM reponses r
 		JOIN intentions i ON i.id = r.intention_id
+		JOIN listes l ON l.id = i.liste_id
 		WHERE r.email IS NOT NULL
+		  AND l.fermee_le IS NULL
 		  AND r.statut <> 'jaurais_aime'
 		  AND i.annulee_le IS NULL
 		  AND i.quand IS NOT NULL

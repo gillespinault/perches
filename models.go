@@ -17,6 +17,7 @@ type Liste struct {
 	Lettre       string
 	Etat         string
 	Email        sql.NullString
+	FermeeLe     sql.NullString
 	CreeLe       string
 }
 
@@ -160,11 +161,11 @@ func scanIntention(row scanneur) (*Intention, error) {
 	return &i, nil
 }
 
-const colonnesListe = `id, slug, jeton_edition, titre, lettre, etat, email, cree_le`
+const colonnesListe = `id, slug, jeton_edition, titre, lettre, etat, email, fermee_le, cree_le`
 
 func scanListe(row scanneur) (*Liste, error) {
 	var l Liste
-	err := row.Scan(&l.ID, &l.Slug, &l.JetonEdition, &l.Titre, &l.Lettre, &l.Etat, &l.Email, &l.CreeLe)
+	err := row.Scan(&l.ID, &l.Slug, &l.JetonEdition, &l.Titre, &l.Lettre, &l.Etat, &l.Email, &l.FermeeLe, &l.CreeLe)
 	if err != nil {
 		return nil, err
 	}

@@ -675,8 +675,8 @@ func TestDecision_AdresseDeriveeDuTitre(t *testing.T) {
 	}
 	app, _ := appTest(t)
 	app.politique = "ouverte"
-	for _, attendu := range []string{"/e/", "/e/", "/e/"} {
-		rec := POST(app, "/listes", url.Values{"titre": {"Les perches d'Anna"}, "email": {"anna@exemple.be"}})
+	for k, attendu := range []string{"/e/", "/e/", "/e/"} {
+		rec := POST(app, "/listes", url.Values{"titre": {"Les perches d'Anna"}, "email": {fmt.Sprintf("anna%d@exemple.be", k)}})
 		if rec.Code != 303 || !strings.HasPrefix(rec.Header().Get("Location"), attendu) {
 			t.Fatalf("création : %d %s", rec.Code, rec.Header().Get("Location"))
 		}
@@ -1026,6 +1026,136 @@ func TestDecision_EmailsDesInvitesPurges(t *testing.T) {
 	}
 	if strings.Contains(GET(app, "/e/edtest/export.json").Body.String(), "exemple.be") {
 		t.Fatal("l'export de l'hôte ne contient pas les e-mails des invités")
+	}
+}
+
+// ---- lot 3 : l'atelier et les textes ----
+
+func TestDecision_ErreursDansLeGabarit(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	rec := POST(app, "/e/edtest/intentions", url.Values{"titre": {"Expo"}})
+	body := rec.Body.String()
+	if rec.Code != 400 || !strings.Contains(body, "<main") || !strings.Contains(body, `href="/e/edtest"`) || strings.Contains(body, "variante") {
+		t.Fatalf("une erreur est une page du site avec un retour à l'atelier, reçu %d : %s", rec.Code, body[:min(200, len(body))])
+	}
+	rec = GET(app, "/e/inconnu")
+	if rec.Code != 404 || strings.Contains(rec.Body.String(), "page not found") || !strings.Contains(rec.Body.String(), "atelier") {
+		t.Fatal("le 404 parle français et oriente vers l'e-mail")
+	}
+	for _, casse := range []string{"/l/Test.", "/l/test/", "/l/TEST"} {
+		rec := GET(app, casse)
+		if rec.Code == 200 {
+			continue
+		}
+		if rec.Code != 301 || GET(app, rec.Header().Get("Location")).Code != 200 {
+			t.Fatalf("lien abîmé %q non réparé : %d → %s", casse, rec.Code, rec.Header().Get("Location"))
+		}
+	}
+}
+
+func TestDecision_ConfirmerAvantAnnulerEtEffacer_PuisRetablir(t *testing.T) {
+	app, m := appTest(t)
+	listeTest(t, app)
+	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "belle idée", "anna@exemple.be")
+	var idRep int64
+	app.db.QueryRow(`SELECT id FROM reponses`).Scan(&idRep)
+	if page := GET(app, fmt.Sprintf("/e/edtest/reponses/%d/effacer", idRep)).Body.String(); !strings.Contains(page, "Effacer la réponse de Anna") || !strings.Contains(page, "belle idée") {
+		t.Fatal("effacer passe par une page qui nomme la personne et son mot")
+	}
+	if page := GET(app, fmt.Sprintf("/e/edtest/intentions/%d/annuler", i.ID)).Body.String(); !strings.Contains(page, "Annuler « KIKK » ?") || !strings.Contains(page, "sera prévenue") {
+		t.Fatal("annuler passe par une page qui dit qui sera prévenu")
+	}
+	atelier := GET(app, "/e/edtest").Body.String()
+	if strings.Contains(atelier, `action="/e/edtest/reponses/`) {
+		t.Fatal("plus de bouton « effacer » à un clic dans l'atelier")
+	}
+	POST(app, fmt.Sprintf("/e/edtest/intentions/%d/annuler", i.ID), nil)
+	if len(m.Envois) != 1 {
+		t.Fatalf("annulation : un envoi, reçu %d", len(m.Envois))
+	}
+	rec := POST(app, fmt.Sprintf("/e/edtest/intentions/%d/retablir", i.ID), nil)
+	if rec.Code != 303 || len(m.Envois) != 2 {
+		t.Fatalf("rétablir : %d, envois %d", rec.Code, len(m.Envois))
+	}
+	j, _, _ := app.intentionParJeton(i.Jeton)
+	if j.AnnuleeLe.Valid {
+		t.Fatal("la perche est rétablie")
+	}
+	if !strings.Contains(GET(app, "/i/"+i.Jeton).Body.String(), `name="statut"`) {
+		t.Fatal("une perche rétablie reprend les réponses")
+	}
+}
+
+func TestDecision_FermerMaListe(t *testing.T) {
+	app, m := appTest(t)
+	listeTest(t, app)
+	i := intentionTest(t, app, dans(1), "KIKK", "page", nil)
+	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "", "anna@exemple.be")
+	if !strings.Contains(GET(app, "/e/edtest/fermer").Body.String(), "en retrait") {
+		t.Fatal("fermer passe par une confirmation")
+	}
+	if rec := POST(app, "/e/edtest/fermer", nil); rec.Code != 303 {
+		t.Fatalf("fermer : %d", rec.Code)
+	}
+	page := GET(app, "/l/test").Body.String()
+	if !strings.Contains(page, "En retrait pour l'instant") || strings.Contains(page, "KIKK") || strings.Contains(page, "envies du moment") {
+		t.Fatal("la page publique ne montre plus que « en retrait pour l'instant »")
+	}
+	if rec := POST(app, "/i/"+i.Jeton+"/reponses", url.Values{"prenom": {"Marc"}, "statut": {"jy_serai"}}); rec.Code != 410 {
+		t.Fatalf("une perche d'une liste en retrait ne prend plus de réponse, reçu %d", rec.Code)
+	}
+	app.envoyerRappels()
+	if len(m.Envois) != 0 {
+		t.Fatal("pas de rappel pour une liste en retrait")
+	}
+	if !strings.Contains(GET(app, "/e/edtest").Body.String(), "KIKK") {
+		t.Fatal("l'atelier garde tout")
+	}
+	POST(app, "/e/edtest/rouvrir", nil)
+	if !strings.Contains(GET(app, "/l/test").Body.String(), "KIKK") {
+		t.Fatal("rouvrir rend la page")
+	}
+}
+
+func TestDecision_PasDeDoublonEnInstanceOuverte(t *testing.T) {
+	app, m := appTest(t)
+	app.politique = "ouverte"
+	POST(app, "/listes", url.Values{"titre": {"Les perches d'Anna"}, "email": {"anna@exemple.be"}})
+	rec := POST(app, "/listes", url.Values{"titre": {"Anna, encore"}, "email": {"anna@exemple.be"}})
+	var n int
+	app.db.QueryRow(`SELECT count(*) FROM listes`).Scan(&n)
+	if n != 1 || rec.Code != 200 || !strings.Contains(rec.Body.String(), "a déjà sa liste") {
+		t.Fatalf("un e-mail qui a déjà sa liste ne crée pas de doublon : listes %d, code %d", n, rec.Code)
+	}
+	if len(m.Envois) != 2 { // bienvenue + renvoi
+		t.Fatalf("le lien de l'atelier est renvoyé, envois %d", len(m.Envois))
+	}
+}
+
+func TestDecision_CodeInvalideDitAuGet(t *testing.T) {
+	app, _ := appTest(t)
+	app.politique = "invitation"
+	page := GET(app, "/?code=faux").Body.String()
+	if strings.Contains(page, `name="titre"`) || !strings.Contains(page, "a déjà servi") {
+		t.Fatal("un lien d'invitation faux ne montre pas le formulaire, et le dit")
+	}
+}
+
+func TestDecision_AtelierStable(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	rec := POST(app, "/e/edtest", url.Values{"lettre": {"Bonjour"}})
+	if rec.Header().Get("Location") != "/e/edtest?ok=lettre#lettre" {
+		t.Fatalf("enregistrer l'introduction ramène à l'introduction, reçu %q", rec.Header().Get("Location"))
+	}
+	if page := GET(app, "/e/edtest?ok=lettre").Body.String(); !strings.Contains(page, "Enregistré") || strings.Index(page, `id="lettre"`) > strings.Index(page, `id="perches"`) {
+		t.Fatal("l'introduction est confirmée et reste en tête de l'atelier")
+	}
+	rec = POST(app, "/e/edtest/intentions", url.Values{"titre": {"Expo"}, "date": {dans(3)}})
+	if !strings.HasSuffix(rec.Header().Get("Location"), "?ok=perche#perches") {
+		t.Fatalf("tendre une perche ramène aux perches, reçu %q", rec.Header().Get("Location"))
 	}
 }
 

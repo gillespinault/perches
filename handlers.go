@@ -24,7 +24,7 @@ func (app *App) tropVite(w http.ResponseWriter, r *http.Request) bool {
 	if app.limiteur.Autorise(app.ipDe(r)) {
 		return false
 	}
-	http.Error(w, "Doucement — réessaie dans une minute.", http.StatusTooManyRequests)
+	app.erreur(w, r, http.StatusTooManyRequests, "Doucement — réessaie dans une minute.")
 	return true
 }
 
@@ -64,11 +64,21 @@ func (app *App) accueil(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	code := strings.TrimSpace(r.URL.Query().Get("code"))
+	codeInvalide := false
+	if code != "" && app.politique == "invitation" {
+		var n int
+		app.db.QueryRow(`SELECT count(*) FROM codes_invitation WHERE code = ? AND utilise_le IS NULL AND cree_le > datetime('now', '-30 days')`, code).Scan(&n)
+		if n == 0 {
+			code, codeInvalide = "", true
+		}
+	}
 	app.rendre(w, "accueil.html", map[string]any{
-		"TitrePage": "Perches",
-		"Politique": app.politique,
-		"BaseURL":   app.baseURL,
-		"Code":      strings.TrimSpace(r.URL.Query().Get("code")),
+		"TitrePage":    "Perches",
+		"Politique":    app.politique,
+		"BaseURL":      app.baseURL,
+		"Code":         code,
+		"CodeInvalide": codeInvalide,
 	})
 }
 
@@ -83,7 +93,7 @@ func (app *App) retenirAtelier(w http.ResponseWriter, jeton string) {
 
 func (app *App) oublierAtelier(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
-		http.Error(w, "Ce geste se fait depuis Perches.", http.StatusForbidden)
+		app.erreur(w, r, http.StatusForbidden, "Ce geste se fait depuis Perches.")
 		return
 	}
 	http.SetCookie(w, &http.Cookie{Name: "atelier", Value: "", Path: "/", MaxAge: -1})
@@ -95,24 +105,39 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if app.politique == "fermee" {
-		http.Error(w, "Cette instance n'accepte pas de nouvelles listes.", http.StatusForbidden)
+		app.erreur(w, r, http.StatusForbidden, "Cette instance n'accepte pas de nouvelles listes.")
 		return
 	}
 	titre := strings.TrimSpace(r.FormValue("titre"))
 	if titre == "" || len([]rune(titre)) > 80 {
-		http.Error(w, "Il faut un titre (80 caractères au plus).", http.StatusBadRequest)
+		app.erreur(w, r, http.StatusBadRequest, "Il faut un titre (80 caractères au plus).")
 		return
 	}
 	email := emailPlausible(r.FormValue("email"))
 	if email == "" {
-		http.Error(w, "Il faut un e-mail : c'est par lui que tu retrouves ton atelier.", http.StatusBadRequest)
+		app.erreur(w, r, http.StatusBadRequest, "Il faut un e-mail : c'est par lui que tu retrouves ton atelier.")
 		return
+	}
+	if app.politique == "ouverte" {
+		// Sur un autre appareil, « ouvrir ta liste » est souvent une tentative de la retrouver :
+		// si l'e-mail a déjà une liste, on renvoie l'atelier au lieu d'en créer une deuxième.
+		var l Liste
+		if err := app.db.QueryRow(`SELECT `+colonnesListe+` FROM listes WHERE email = ? ORDER BY cree_le LIMIT 1`, email).
+			Scan(&l.ID, &l.Slug, &l.JetonEdition, &l.Titre, &l.Lettre, &l.Etat, &l.Email, &l.FermeeLe, &l.CreeLe); err == nil {
+			app.enFond(func() {
+				corps := fmt.Sprintf("Ta liste « %s » :\n\nTa page, à partager : %s/l/%s\nTon atelier (ta clé — garde ce lien pour toi) : %s/e/%s\n",
+					l.Titre, app.baseURL, l.Slug, app.baseURL, l.JetonEdition)
+				app.envoyer(email, "Perches — ton atelier", corps, "recuperation_lien", 0, l.ID)
+			})
+			app.erreur(w, r, http.StatusOK, "Cet e-mail a déjà sa liste, « "+l.Titre+" » — le lien de ton atelier vient de repartir par e-mail.")
+			return
+		}
 	}
 	// Une transaction : le code est consommé d'abord (une seule liste par code, même en
 	// concurrence), puis l'adresse est essayée jusqu'à en trouver une libre.
 	tx, err := app.db.Begin()
 	if err != nil {
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
 	defer tx.Rollback()
@@ -121,7 +146,7 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 		res, err := tx.Exec(`UPDATE codes_invitation SET utilise_le = datetime('now')
 			WHERE code = ? AND utilise_le IS NULL AND cree_le > datetime('now', '-30 days')`, code)
 		if n, _ := res.RowsAffected(); err != nil || n != 1 {
-			http.Error(w, "Ce lien d'invitation a déjà servi, ou n'est plus valable — redemande-en un à la personne qui te l'a envoyé.", http.StatusForbidden)
+			app.erreur(w, r, http.StatusForbidden, "Ce lien d'invitation a déjà servi, ou n'est plus valable — redemande-en un à la personne qui te l'a envoyé.")
 			return
 		}
 	}
@@ -136,7 +161,7 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		if !strings.Contains(err.Error(), "UNIQUE") || n > 100 {
-			http.Error(w, "erreur interne", http.StatusInternalServerError)
+			app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 			return
 		}
 		slug = fmt.Sprintf("%s-%d", base, n)
@@ -146,7 +171,7 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 		tx.Exec(`UPDATE codes_invitation SET liste_id = ? WHERE code = ?`, listeID, code)
 	}
 	if err := tx.Commit(); err != nil {
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
 	if email != "" {
@@ -184,7 +209,7 @@ func (app *App) recupererLien(w http.ResponseWriter, r *http.Request) {
 	}
 	app.rendre(w, "message.html", map[string]any{
 		"TitrePage": "Perches",
-		"Message":   "Si cette adresse est connue ici, le lien de ton atelier vient de partir par e-mail.",
+		"Message":   "Si cet e-mail est connu ici, le lien de ton atelier vient de partir.",
 	})
 }
 
@@ -199,20 +224,23 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 	case strings.HasSuffix(slug, ".json"):
 		format, slug = "json", strings.TrimSuffix(slug, ".json")
 	}
-	liste, err := app.listeParSlug(slug)
+	liste, err := app.listeParSlug(strings.ToLower(slug))
 	if err != nil {
-		http.NotFound(w, r)
+		app.introuvable(w, r)
 		return
+	}
+	if liste.FermeeLe.Valid {
+		liste.Lettre = ""
 	}
 	toutes, err := app.intentionsPubliques(liste.ID)
 	if err != nil {
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
 	// même règle que la page de la perche : passée deux heures après l'heure, ou à minuit sans heure
 	var intentions []Intention
 	for _, i := range toutes {
-		if !i.Passee() {
+		if !i.Passee() && !liste.FermeeLe.Valid {
 			intentions = append(intentions, i)
 		}
 	}
@@ -302,7 +330,7 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 	}
 	intention, liste, err := app.intentionParJeton(j)
 	if err != nil {
-		http.NotFound(w, r)
+		app.introuvable(w, r)
 		return
 	}
 	if format == "ics" {
@@ -334,7 +362,10 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 	if s := r.URL.Query().Get("merci"); s == "jy_serai" || s == "peut_etre" || s == "jaurais_aime" {
 		merci = map[string]any{"Statut": s, "Prenom": r.URL.Query().Get("prenom"), "AvecEmail": r.URL.Query().Get("email") == "1"}
 	}
-	ouverte := !intention.AnnuleeLe.Valid && !intention.Passee()
+	ouverte := !intention.AnnuleeLe.Valid && !intention.Passee() && !liste.FermeeLe.Valid
+	if liste.FermeeLe.Valid {
+		liste.Lettre = ""
+	}
 	ogDesc := quandFR(intention.Quand)
 	if intention.Lieu != "" {
 		ogDesc += " — " + intention.Lieu
@@ -359,13 +390,13 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 	if app.tropVite(w, r) {
 		return
 	}
-	intention, _, err := app.intentionParJeton(r.PathValue("jeton"))
+	intention, liste, err := app.intentionParJeton(r.PathValue("jeton"))
 	if err != nil {
-		http.NotFound(w, r)
+		app.introuvable(w, r)
 		return
 	}
-	if intention.AnnuleeLe.Valid || intention.Passee() {
-		http.Error(w, "Cette intention est terminée.", http.StatusGone)
+	if intention.AnnuleeLe.Valid || intention.Passee() || liste.FermeeLe.Valid {
+		app.erreur(w, r, http.StatusGone, "C'est passé — cette page ne prend plus de réponse.")
 		return
 	}
 	prenom := strings.TrimSpace(r.FormValue("prenom"))
@@ -373,11 +404,11 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 	mot := strings.TrimSpace(r.FormValue("mot"))
 	email := emailPlausible(r.FormValue("email"))
 	if prenom == "" || len([]rune(prenom)) > 60 {
-		http.Error(w, "Un prénom suffit — mais il en faut un.", http.StatusBadRequest)
+		app.erreur(w, r, http.StatusBadRequest, "Un prénom suffit — mais il en faut un.")
 		return
 	}
 	if statut != "jy_serai" && statut != "peut_etre" && statut != "jaurais_aime" {
-		http.Error(w, "Les réponses possibles : « j'y serai », « peut-être », « j'aurais bien aimé ».", http.StatusBadRequest)
+		app.erreur(w, r, http.StatusBadRequest, "Les réponses possibles : « j'y serai », « peut-être », « j'aurais bien aimé ».")
 		return
 	}
 	// Pot de miel : un champ invisible qu'un humain ne remplit pas. On répond comme si de rien.
@@ -386,14 +417,14 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.ContainsAny(mot, "\r\n") || len([]rune(mot)) > 200 {
-		http.Error(w, "Le mot tient sur une ligne (200 caractères au plus).", http.StatusBadRequest)
+		app.erreur(w, r, http.StatusBadRequest, "Le mot tient sur une ligne (200 caractères au plus).")
 		return
 	}
 	visible := r.FormValue("prenom_visible") != ""
 	var n int
 	app.db.QueryRow(`SELECT count(*) FROM reponses WHERE intention_id = ?`, intention.ID).Scan(&n)
 	if n >= plafondReponses {
-		http.Error(w, "Cette perche a reçu plus de réponses qu'elle n'en attendait — écris directement à la personne.", http.StatusForbidden)
+		app.erreur(w, r, http.StatusForbidden, "Cette perche a reçu plus de réponses qu'elle n'en attendait — écris directement à la personne.")
 		return
 	}
 	if email != "" {
@@ -421,7 +452,7 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 			VALUES (?,?,?,?,?,?)`, intention.ID, prenom, statut, mot, visible, nullSi(email))
 	}
 	if err != nil {
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
 	// Convention 7 : aucune notification vers l'hôte — rien ne part d'ici.
@@ -439,12 +470,12 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 	j := r.PathValue("jeton")
 	liste, err := app.listeParJetonEdition(j)
 	if err != nil {
-		http.NotFound(w, r)
+		app.introuvable(w, r)
 		return
 	}
 	intentions, err := app.toutesIntentions(liste.ID)
 	if err != nil {
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
 	app.retenirAtelier(w, liste.JetonEdition)
@@ -470,6 +501,8 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 		"LienEdition":   app.baseURL + "/e/" + liste.JetonEdition,
 		"Bienvenue":     r.URL.Query().Has("bienvenue"),
 		"Invitation":    r.URL.Query().Get("invitation"),
+		"Politique":     app.politique,
+		"OK":            r.URL.Query().Get("ok"),
 	})
 }
 
@@ -481,12 +514,12 @@ func (app *App) creerInvitation(w http.ResponseWriter, r *http.Request) {
 	}
 	liste, err := app.listeParJetonEdition(r.PathValue("jeton"))
 	if err != nil {
-		http.NotFound(w, r)
+		app.introuvable(w, r)
 		return
 	}
 	code := jeton(8)
 	if _, err := app.db.Exec(`INSERT INTO codes_invitation (code) VALUES (?)`, code); err != nil {
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
 	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?invitation="+code+"#inviter", http.StatusSeeOther)
@@ -498,19 +531,19 @@ func (app *App) majListe(w http.ResponseWriter, r *http.Request) {
 	}
 	liste, err := app.listeParJetonEdition(r.PathValue("jeton"))
 	if err != nil {
-		http.NotFound(w, r)
+		app.introuvable(w, r)
 		return
 	}
 	lettre := r.FormValue("lettre")
 	if !borne(lettre, 5000) {
-		http.Error(w, "L'introduction tient en 5 000 caractères.", http.StatusBadRequest)
+		app.erreur(w, r, http.StatusBadRequest, "L'introduction tient en 5 000 caractères.")
 		return
 	}
 	if _, err := app.db.Exec(`UPDATE listes SET lettre = ?, etat = '' WHERE id = ?`, lettre, liste.ID); err != nil {
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
-	http.Redirect(w, r, "/e/"+liste.JetonEdition, http.StatusSeeOther)
+	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=lettre#lettre", http.StatusSeeOther)
 }
 
 // reglages : titre, adresse, e-mail — ce qui change rarement, et se relit en pied d'atelier.
@@ -520,21 +553,21 @@ func (app *App) reglages(w http.ResponseWriter, r *http.Request) {
 	}
 	liste, err := app.listeParJetonEdition(r.PathValue("jeton"))
 	if err != nil {
-		http.NotFound(w, r)
+		app.introuvable(w, r)
 		return
 	}
 	titre := strings.TrimSpace(r.FormValue("titre"))
 	slug := strings.ToLower(strings.TrimSpace(r.FormValue("slug")))
 	email := emailPlausible(r.FormValue("email"))
 	if titre == "" || len([]rune(titre)) > 80 || !slugValide.MatchString(slug) || email == "" {
-		http.Error(w, "Il faut un titre, une adresse en minuscules (lettres, chiffres, tirets) et un e-mail.", http.StatusBadRequest)
+		app.erreur(w, r, http.StatusBadRequest, "Il faut un titre, une adresse en minuscules (lettres, chiffres, tirets) et un e-mail.")
 		return
 	}
 	if _, err := app.db.Exec(`UPDATE listes SET titre = ?, slug = ?, email = ? WHERE id = ?`, titre, slug, email, liste.ID); err != nil {
-		http.Error(w, "Cette adresse est déjà prise par une autre liste.", http.StatusConflict)
+		app.erreur(w, r, http.StatusConflict, "Cette adresse est déjà prise par une autre liste.")
 		return
 	}
-	http.Redirect(w, r, "/e/"+liste.JetonEdition+"#reglages", http.StatusSeeOther)
+	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=reglages#reglages", http.StatusSeeOther)
 }
 
 func quandDepuisForm(r *http.Request) (string, error) {
@@ -559,12 +592,12 @@ func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
 	}
 	liste, err := app.listeParJetonEdition(r.PathValue("jeton"))
 	if err != nil {
-		http.NotFound(w, r)
+		app.introuvable(w, r)
 		return
 	}
 	titre := strings.TrimSpace(r.FormValue("titre"))
 	if titre == "" {
-		http.Error(w, "Il faut un titre.", http.StatusBadRequest)
+		app.erreur(w, r, http.StatusBadRequest, "Il manque le « quoi » : en quelques mots, ce que tu vas faire.")
 		return
 	}
 	if msg := champsIntentionTropLongs(r); msg != "" {
@@ -573,7 +606,7 @@ func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
 	}
 	quand, err := quandDepuisForm(r)
 	if err != nil {
-		http.Error(w, "Il faut une date (la variante « à fixer » viendra plus tard).", http.StatusBadRequest)
+		app.erreur(w, r, http.StatusBadRequest, "Il faut une date — pour l'instant, une perche se tend à un jour précis.")
 		return
 	}
 	visibilite := "page"
@@ -592,26 +625,26 @@ func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
 		strings.TrimSpace(r.FormValue("lieu")), nullSi(urlPlausible(r.FormValue("url_externe"))),
 		capacite, jyVais, visibilite)
 	if err != nil {
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
-	http.Redirect(w, r, "/e/"+liste.JetonEdition, http.StatusSeeOther)
+	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=perche#perches", http.StatusSeeOther)
 }
 
 func (app *App) intentionDuChemin(w http.ResponseWriter, r *http.Request) (*Liste, *Intention, bool) {
 	liste, err := app.listeParJetonEdition(r.PathValue("jeton"))
 	if err != nil {
-		http.NotFound(w, r)
+		app.introuvable(w, r)
 		return nil, nil, false
 	}
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.NotFound(w, r)
+		app.introuvable(w, r)
 		return nil, nil, false
 	}
 	intention, err := app.intentionDeListe(liste.ID, id)
 	if err != nil {
-		http.NotFound(w, r)
+		app.introuvable(w, r)
 		return nil, nil, false
 	}
 	return liste, intention, true
@@ -668,13 +701,13 @@ func (app *App) annulerIntention(w http.ResponseWriter, r *http.Request) {
 	}
 	if !intention.AnnuleeLe.Valid {
 		if _, err := app.db.Exec(`UPDATE intentions SET annulee_le = datetime('now') WHERE id = ?`, intention.ID); err != nil {
-			http.Error(w, "erreur interne", http.StatusInternalServerError)
+			app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 			return
 		}
 		app.notifierLogistique(intention.ID, "annulation : "+intention.Titre,
-			fmt.Sprintf("L'intention « %s » (%s) est annulée.", intention.Titre, quandFR(intention.Quand)))
+			fmt.Sprintf("« %s » (%s) est annulé.\n\n%s/i/%s", intention.Titre, quandFR(intention.Quand), app.baseURL, intention.Jeton))
 	}
-	http.Redirect(w, r, "/e/"+liste.JetonEdition, http.StatusSeeOther)
+	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=annulee#archive", http.StatusSeeOther)
 }
 
 func (app *App) majIntention(w http.ResponseWriter, r *http.Request) {
@@ -691,12 +724,12 @@ func (app *App) majIntention(w http.ResponseWriter, r *http.Request) {
 	}
 	quand, err := quandDepuisForm(r)
 	if err != nil {
-		http.Error(w, "Il faut une date valide.", http.StatusBadRequest)
+		app.erreur(w, r, http.StatusBadRequest, "Il faut une date valide.")
 		return
 	}
 	titre := strings.TrimSpace(r.FormValue("titre"))
 	if titre == "" {
-		http.Error(w, "Il faut un titre.", http.StatusBadRequest)
+		app.erreur(w, r, http.StatusBadRequest, "Il manque le « quoi » : en quelques mots, ce que tu vas faire.")
 		return
 	}
 	lieu := strings.TrimSpace(r.FormValue("lieu"))
@@ -715,38 +748,38 @@ func (app *App) majIntention(w http.ResponseWriter, r *http.Request) {
 		capacite = ?, visibilite = ?, jy_vais_de_toute_facon = ? WHERE id = ?`,
 		titre, r.FormValue("description"), quand, lieu, nullSi(urlPlausible(r.FormValue("url_externe"))),
 		capacite, visibilite, jyVais, intention.ID); err != nil {
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
 	intention.Titre = titre
 	if change && !intention.AnnuleeLe.Valid {
 		var q = quand
-		msg := fmt.Sprintf("L'intention « %s » a changé : %s", intention.Titre,
+		msg := fmt.Sprintf("« %s » change : %s", intention.Titre,
 			quandFR(sqlString(q)))
 		if lieu != "" {
 			msg += " — " + lieu
 		}
 		msg += fmt.Sprintf(".\n\n%s/i/%s", app.baseURL, intention.Jeton)
-		app.notifierLogistique(intention.ID, "changement : "+intention.Titre, msg)
+		app.notifierLogistique(intention.ID, "« "+intention.Titre+" » change de date ou de lieu", msg)
 	}
-	http.Redirect(w, r, "/e/"+liste.JetonEdition, http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/e/%s?ok=corrige#perche-%d", liste.JetonEdition, intention.ID), http.StatusSeeOther)
 }
 
 func (app *App) effacerReponse(w http.ResponseWriter, r *http.Request) {
 	liste, err := app.listeParJetonEdition(r.PathValue("jeton"))
 	if err != nil {
-		http.NotFound(w, r)
+		app.introuvable(w, r)
 		return
 	}
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.NotFound(w, r)
+		app.introuvable(w, r)
 		return
 	}
 	if _, err := app.db.Exec(`DELETE FROM reponses WHERE id = ?
 		AND intention_id IN (SELECT id FROM intentions WHERE liste_id = ?)`, id, liste.ID); err != nil {
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
-	http.Redirect(w, r, "/e/"+liste.JetonEdition, http.StatusSeeOther)
+	http.Redirect(w, r, "/e/"+liste.JetonEdition+"#perches", http.StatusSeeOther)
 }

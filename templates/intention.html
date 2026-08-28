@@ -20,6 +20,8 @@
 {{with .PrenomsPeutEtre}}<p class="qui">Peut-être : {{joindre . ", "}}.</p>{{end}}
 {{with .AuraitAime}}<p class="qui">{{.}}</p>{{end}}
 {{if .LienSeulement}}<p class="discret">Cette perche n'est pas sur la page de {{.Liste.Titre}} — garde ce lien.</p>{{end}}
+{{else if .Liste.FermeeLe.Valid}}
+<p class="passee">{{.Liste.Titre}} est en retrait pour l'instant.</p>
 {{else if not .I.AnnuleeLe.Valid}}
 <p class="passee">C'est passé.</p>
 {{end}}

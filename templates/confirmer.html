@@ -1,0 +1,8 @@
+{{template "entete" .}}
+<h1>{{.Titre}}</h1>
+<p>{{.Question}}</p>
+<form method="post" action="{{.Action}}" class="confirmation">
+<button>{{.Bouton}}</button>
+<a href="{{.Retour}}">Non, revenir</a>
+</form>
+{{template "pied" .}}

@@ -158,3 +158,11 @@ input[type="radio"] { width: 1.3em; height: 1.3em; accent-color: var(--accent); 
 details.plus { margin: .6rem 0 1rem; }
 details.plus summary { color: var(--doux); }
 .lien-externe a { word-break: break-all; }
+
+/* Lot 3 — atelier et messages */
+.ok { color: var(--accent); font-style: italic; }
+.message { font-size: 1.15rem; }
+.confirmation { display: flex; gap: 1rem; align-items: center; }
+.sobre-lien { margin-left: 1rem; color: var(--doux); }
+.exports form { display: inline; }
+.exports p { margin: .3rem 0 0; }

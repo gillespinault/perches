@@ -1,7 +1,8 @@
 {{template "entete" .}}
 <h1>{{.Liste.Titre}}</h1>
+{{if .Liste.FermeeLe.Valid}}<p class="etat">En retrait pour l'instant.</p>{{else}}
 {{with .Liste.Lettre}}<div class="lettre">{{.}}</div>{{end}}
-
+{{end}}
 <section class="intentions">
 {{range .Intentions}}
 <article>
@@ -10,7 +11,7 @@
 <p class="geste"><a href="/i/{{.Jeton}}">si ça te dit →</a></p>
 </article>
 {{else}}
-<p class="vide">Rien d'annoncé pour l'instant.</p>
+{{if not .Liste.FermeeLe.Valid}}<p class="vide">Rien d'annoncé pour l'instant.</p>{{end}}
 {{end}}
 </section>
 

@@ -9,47 +9,69 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 <h1>{{.Liste.Titre}} <span class="discret">· atelier</span></h1>
 {{end}}
 
+{{if .Liste.FermeeLe.Valid}}
+<aside class="bienvenue">
+<p><strong>Ta liste est en retrait.</strong> Ta page ne montre que « en retrait pour l'instant » ; tes perches et ton archive sont ici, intactes.</p>
+<form method="post" action="/e/{{.Liste.JetonEdition}}/rouvrir"><button class="sobre">Rouvrir ma liste</button></form>
+</aside>
+{{end}}
+
 <p class="partage">Ta page, à partager :
-<span class="copiable"><a href="/l/{{.Liste.Slug}}"><code>{{.LienPublic}}</code></a><span hidden id="lien-liste">{{.LienPublic}}</span><button type="button" class="discret" hidden data-copier="lien-liste">copier</button></span></p>
+<span class="copiable"><a href="/l/{{.Liste.Slug}}" target="_blank" rel="noopener"><code>{{.LienPublic}}</code></a><span hidden id="lien-liste">{{.LienPublic}}</span><button type="button" class="discret" hidden data-copier="lien-liste">copier</button></span>
+<span class="discret">— s'ouvre à côté, comme tes amis la verront</span></p>
 
-{{if not .Liste.Lettre}}{{template "section-lettre" .}}{{end}}
+<section id="lettre">
+<h2>Ton introduction</h2>
+{{if eq .OK "lettre"}}<p class="ok">Enregistré — <a href="/l/{{.Liste.Slug}}" target="_blank" rel="noopener">voir ma page</a>.</p>{{end}}
+<p class="discret">Elle ouvre ta page, juste sous le titre, telle quelle, et accompagne chaque perche.</p>
+<form method="post" action="/e/{{.Liste.JetonEdition}}">
+<label>Texte brut : les sauts de ligne sont gardés, rien d'autre
+<textarea name="lettre" rows="{{if .Liste.Lettre}}5{{else}}8{{end}}" placeholder="Bonjour,&#10;voici les envies du moment…">{{.Liste.Lettre}}</textarea></label>
+<button>Enregistrer</button>
+</form>
+</section>
 
-<section>
+<section id="perches">
 <h2>Perches tendues</h2>
+{{if eq .OK "perche"}}<p class="ok">Perche tendue — son lien est ci-dessous, à envoyer à qui tu veux.</p>{{end}}
+{{if eq .OK "corrige"}}<p class="ok">Corrigé.</p>{{end}}
+{{if eq .OK "retablie"}}<p class="ok">Rétablie — ceux qui avaient laissé un e-mail sont prévenus.</p>{{end}}
 {{range .AVenir}}
-<article class="edition">
+<article class="edition" id="perche-{{.ID}}">
 <h3><a href="/i/{{.Jeton}}">{{.Titre}}</a></h3>
 <p class="quand">{{quandfr .Quand}}{{with .Lieu}} — {{.}}{{end}}
 {{if eq .Visibilite "lien"}}· par lien seulement{{end}}
-{{if .Capacite.Valid}}· capacité indicative {{.Capacite.Int64}}{{end}}</p>
+{{if .Capacite.Valid}}· {{.Capacite.Int64}} places, à titre indicatif{{end}}</p>
 <p class="partage discret">Lien de cette perche :
 <span class="copiable"><span id="lien-i-{{.ID}}">{{$.BaseURL}}/i/{{.Jeton}}</span><button type="button" class="discret" hidden data-copier="lien-i-{{.ID}}">copier</button></span></p>
 <ul class="reponses">
 {{range .Reponses}}
 <li>{{.Prenom}} — {{template "statut" .Statut}}{{with .Mot}} · « {{.}} »{{end}}
-<form method="post" action="/e/{{$.Liste.JetonEdition}}/reponses/{{.ID}}/effacer" class="enligne"><button class="discret">effacer</button></form></li>
+<a class="discret" href="/e/{{$.Liste.JetonEdition}}/reponses/{{.ID}}/effacer">effacer</a></li>
 {{else}}
 <li class="vide">Pas encore de réponse — et c'est très bien aussi.</li>
 {{end}}
 </ul>
 <details>
-<summary>Modifier, annuler</summary>
+<summary>Corriger cette perche</summary>
 <form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/maj">
-<label>Quoi <input name="titre" required value="{{.Titre}}"></label>
-<label>Quand <span class="enligne-champs"><input type="date" name="date" value="{{datede .Quand}}" required> <input type="time" name="heure" value="{{heurede .Quand}}"></span></label>
+<label>Quoi <input name="titre" required maxlength="120" value="{{.Titre}}"></label>
+<label>Quand — l'heure est optionnelle <span class="enligne-champs"><input type="date" name="date" value="{{datede .Quand}}" required> <input type="time" name="heure" value="{{heurede .Quand}}"></span></label>
 <label>Où <input name="lieu" value="{{.Lieu}}"></label>
 <label>Quelques mots <textarea name="description" rows="3">{{.Description}}</textarea></label>
+<details>
+<summary>Plus d'options</summary>
 <label>Lien externe <input name="url_externe" type="url" value="{{.URLExterne.String}}"></label>
-<label>Capacité indicative <input name="capacite" type="number" min="1" value="{{if .Capacite.Valid}}{{.Capacite.Int64}}{{end}}"></label>
+<label>Places, à titre indicatif <input name="capacite" type="number" min="1" value="{{if .Capacite.Valid}}{{.Capacite.Int64}}{{end}}"></label>
 <label>Visibilité
 <select name="visibilite">
 <option value="page"{{if eq .Visibilite "page"}} selected{{end}}>sur ma page</option>
 <option value="lien"{{if eq .Visibilite "lien"}} selected{{end}}>par lien seulement</option>
 </select></label>
-<button>Enregistrer <span class="discret">— si la date ou le lieu change, ceux qui ont laissé un e-mail sont prévenus</span></button>
-</form>
-<form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/annuler">
-<button class="sobre">Annuler cette perche <span class="discret">— idem</span></button>
+</details>
+<p class="discret">Si la date ou le lieu change, ceux qui ont laissé un e-mail sont prévenus. Rien d'autre ne part.</p>
+<button>Enregistrer les corrections</button>
+<a class="sobre-lien" href="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/annuler">Annuler cette perche…</a>
 </form>
 </details>
 </article>
@@ -79,13 +101,12 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 </form>
 </section>
 
-{{if .Liste.Lettre}}{{template "section-lettre" .}}{{end}}
-
 {{if .Passees}}
-<details class="archive">
-<summary>Archive — {{len .Passees}} perche(s) passée(s), visible d'ici seulement</summary>
+<details class="archive" id="archive"{{if eq .OK "annulee"}} open{{end}}>
+<summary>Archive — {{len .Passees}} {{if eq (len .Passees) 1}}perche passée{{else}}perches passées{{end}}, visible d'ici seulement</summary>
+{{if eq .OK "annulee"}}<p class="ok">Annulée — ceux qui avaient laissé un e-mail sont prévenus.</p>{{end}}
 {{range .Passees}}
-<article class="edition passee">
+<article class="edition passee" id="perche-{{.ID}}">
 <h3>{{.Titre}}</h3>
 <p class="quand">{{quandfr .Quand}}{{with .Lieu}} — {{.}}{{end}}{{if .AnnuleeLe.Valid}} · annulée{{end}}</p>
 <ul class="reponses">
@@ -95,23 +116,29 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 <li class="vide">Sans réponse.</li>
 {{end}}
 </ul>
+{{if and .AnnuleeLe.Valid (not .Passee)}}
+<form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/retablir"><button class="sobre">Rétablir cette perche — ceux qui ont laissé un e-mail seront prévenus</button></form>
+{{end}}
 </article>
 {{end}}
 </details>
 {{end}}
 
+{{if eq .Politique "invitation"}}
 <details class="pied-page" id="inviter"{{if .Invitation}} open{{end}}>
-<summary>Un ami veut sa propre liste ?</summary>
-<p class="discret">Rien à voir avec partager tes perches (pour ça, les liens plus haut) : ceci ouvre la porte à quelqu'un d'autre, pour une liste à lui.</p>
+<summary>Quelqu'un veut sa propre liste ?</summary>
+<p class="discret">Rien à voir avec partager tes perches (pour ça, les liens plus haut) : ceci ouvre la porte à quelqu'un d'autre, pour une liste à part.</p>
 {{if .Invitation}}
-<p>À lui envoyer — ce lien vaut pour une seule liste :</p>
+<p>À envoyer à cette personne — ce lien vaut pour une seule liste :</p>
 <p class="copiable"><code id="lien-invitation">{{.BaseURL}}/?code={{.Invitation}}</code><button type="button" class="discret" hidden data-copier="lien-invitation">copier</button></p>
 {{end}}
 <form method="post" action="/e/{{.Liste.JetonEdition}}/invitations"><button class="sobre">Créer un lien d'invitation</button></form>
 </details>
+{{end}}
 
-<details class="pied-page" id="reglages">
+<details class="pied-page" id="reglages"{{if eq .OK "reglages"}} open{{end}}>
 <summary>Réglages — {{.Liste.Email.String}}</summary>
+{{if eq .OK "reglages"}}<p class="ok">Enregistré.</p>{{end}}
 <form method="post" action="/e/{{.Liste.JetonEdition}}/reglages">
 <label>Titre <input name="titre" required maxlength="80" value="{{.Liste.Titre}}"></label>
 <label>Adresse de ta page
@@ -120,22 +147,12 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 <label>E-mail — c'est par lui que tu retrouves ton atelier <input name="email" type="email" required value="{{.Liste.Email.String}}"></label>
 <button class="sobre">Enregistrer</button>
 </form>
+{{if not .Liste.FermeeLe.Valid}}<p class="discret"><a href="/e/{{.Liste.JetonEdition}}/fermer">Fermer ma liste…</a> — ta page dira « en retrait pour l'instant » ; tout reste ici.</p>{{end}}
 </details>
 
-<div class="exports"><a href="/e/{{.Liste.JetonEdition}}/export.json">tout exporter (JSON)</a> ·
-<form method="post" action="/oublier" class="enligne"><button class="discret">quitter ce navigateur</button></form></div>
+<div class="exports"><a href="/e/{{.Liste.JetonEdition}}/export.json">garder une copie de tout (fichier)</a> ·
+<form method="post" action="/oublier" class="enligne"><button class="discret">oublier mon atelier sur ce navigateur</button></form>
+<p class="discret">Pour revenir ici : l'adresse du site suffit sur ce navigateur ; ailleurs, ton e-mail.</p></div>
 {{template "pied" .}}
 
 {{define "statut"}}{{if eq . "jy_serai"}}j'y serai{{else if eq . "peut_etre"}}peut-être{{else}}j'aurais bien aimé{{end}}{{end}}
-
-{{define "section-lettre"}}
-<section id="lettre">
-<h2>Ton introduction</h2>
-<p class="discret">Elle ouvre ta page, juste sous le titre, telle quelle.</p>
-<form method="post" action="/e/{{.Liste.JetonEdition}}">
-<label>Ton introduction — texte brut : les sauts de ligne sont gardés, rien d'autre
-<textarea name="lettre" rows="8" placeholder="Bonjour,&#10;voici les envies du moment…">{{.Liste.Lettre}}</textarea></label>
-<button>Enregistrer</button>
-</form>
-</section>
-{{end}}

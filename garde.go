@@ -26,9 +26,9 @@ func (app *App) protege(suivant http.Handler) http.Handler {
 			if err := r.ParseForm(); err != nil {
 				var trop *http.MaxBytesError
 				if errors.As(err, &trop) {
-					http.Error(w, "C'est trop long pour un formulaire de Perches.", http.StatusRequestEntityTooLarge)
+					app.erreur(w, r, http.StatusRequestEntityTooLarge, "C'est trop long pour un formulaire de Perches.")
 				} else {
-					http.Error(w, "Formulaire illisible.", http.StatusBadRequest)
+					app.erreur(w, r, http.StatusBadRequest, "Formulaire illisible.")
 				}
 				return
 			}

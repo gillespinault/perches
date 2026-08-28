@@ -45,6 +45,14 @@ func migrer(db *sql.DB) error {
 	if err := db.QueryRow(`SELECT sql FROM sqlite_master WHERE type='table' AND name='reponses'`).Scan(&def); err != nil {
 		return err
 	}
+	// 2026-08-28 : « fermer ma liste » — colonne fermee_le.
+	var n int
+	db.QueryRow(`SELECT count(*) FROM pragma_table_info('listes') WHERE name = 'fermee_le'`).Scan(&n)
+	if n == 0 {
+		if _, err := db.Exec(`ALTER TABLE listes ADD COLUMN fermee_le TEXT`); err != nil {
+			return err
+		}
+	}
 	if strings.Contains(def, "jaurais_aime") {
 		return nil
 	}

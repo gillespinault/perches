@@ -100,7 +100,15 @@ func (app *App) routes() http.Handler {
 	mux.HandleFunc("POST /e/{jeton}/reponses/{id}/effacer", app.effacerReponse)
 	mux.HandleFunc("GET /e/{jeton}/export.json", app.exportComplet)
 	mux.HandleFunc("POST /e/{jeton}/invitations", app.creerInvitation)
+	// confirmations et gestes rares (atelier.go)
+	mux.HandleFunc("GET /e/{jeton}/intentions/{id}/annuler", app.confirmerAnnulation)
+	mux.HandleFunc("POST /e/{jeton}/intentions/{id}/retablir", app.retablirIntention)
+	mux.HandleFunc("GET /e/{jeton}/reponses/{id}/effacer", app.confirmerEffacement)
+	mux.HandleFunc("GET /e/{jeton}/fermer", app.confirmerFermeture)
+	mux.HandleFunc("POST /e/{jeton}/fermer", app.fermerListe)
+	mux.HandleFunc("POST /e/{jeton}/rouvrir", app.rouvrirListe)
 	mux.Handle("GET /static/", http.FileServerFS(staticFS))
+	mux.HandleFunc("/", app.introuvable)
 	return mux
 }
 

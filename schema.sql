@@ -18,7 +18,8 @@ CREATE TABLE listes (
     titre         TEXT NOT NULL,
     lettre        TEXT NOT NULL DEFAULT '', -- texte libre, affiché avant la mécanique
     etat          TEXT NOT NULL DEFAULT '', -- « je rouvre doucement », « en retrait », …
-    email         TEXT,                    -- récupération du lien secret, optionnel
+    email         TEXT,                    -- retrouver l'atelier (demandé à l'ouverture)
+    fermee_le     TEXT,                    -- « en retrait pour l'instant » : la page ne montre plus rien
     cree_le       TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
