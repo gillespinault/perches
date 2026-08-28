@@ -35,15 +35,17 @@ func servirICS(w http.ResponseWriter, nom string, intentions []Intention, baseUR
 		if !i.Quand.Valid {
 			continue
 		}
-		t, avecHeure, err := analyserQuand(i.Quand.String)
+		// l'agenda d'un invité reçoit les dates de la perche — quand l'hôte y va — sinon celles de l'événement
+		quand, finPerche := i.DatesAffichees()
+		t, avecHeure, err := analyserQuand(quand.String)
 		if err != nil {
 			continue
 		}
 		ligne("BEGIN:VEVENT")
 		ligne("UID:" + i.Jeton + "@perches")
 		ligne("DTSTAMP:" + horodatage)
-		switch fin, _, errFin := analyserQuand(i.Fin.String); {
-		case i.Fin.Valid && errFin == nil:
+		switch fin, _, errFin := analyserQuand(finPerche.String); {
+		case finPerche.Valid && errFin == nil:
 			// plusieurs jours : journées entières, DTEND exclusif (le lendemain du dernier jour)
 			ligne("DTSTART;VALUE=DATE:" + t.Format("20060102"))
 			ligne("DTEND;VALUE=DATE:" + fin.AddDate(0, 0, 1).Format("20060102"))
@@ -78,25 +80,37 @@ func servirICS(w http.ResponseWriter, nom string, intentions []Intention, baseUR
 // ---- JSON ----
 
 // Le format ouvert (§8 du doc projet) : une intention est un objet JSON minuscule.
+// La perche : le geste de l'hôte sur un repéré, avec ses dates. Absente = repéré seul.
+type percheJSON struct {
+	TendueLe string `json:"tendue_le"`
+	Quand    string `json:"quand,omitempty"`
+	Fin      string `json:"fin,omitempty"`
+}
+
 type intentionJSON struct {
-	Jeton       string `json:"perche"`
-	Titre       string `json:"titre"`
-	Description string `json:"description,omitempty"`
-	Quand       string `json:"quand,omitempty"`
-	Fin         string `json:"fin,omitempty"`
-	Nature      string `json:"nature"`
-	Lieu        string `json:"lieu,omitempty"`
-	URLExterne  string `json:"url_externe,omitempty"`
-	JyVais      bool   `json:"jy_vais_de_toute_facon"`
-	Annulee     bool   `json:"annulee,omitempty"`
+	Jeton       string      `json:"perche"`
+	Titre       string      `json:"titre"`
+	Description string      `json:"description,omitempty"`
+	Quand       string      `json:"quand,omitempty"`
+	Fin         string      `json:"fin,omitempty"`
+	Perche      *percheJSON `json:"perche_tendue,omitempty"` // le jeton s'appelle déjà « perche » : c'est le lien
+	Lieu        string      `json:"lieu,omitempty"`
+	URLExterne  string      `json:"url_externe,omitempty"`
+	JyVais      bool        `json:"jy_vais_de_toute_facon"`
+	Annulee     bool        `json:"annulee,omitempty"`
 }
 
 func versIntentionJSON(i Intention) intentionJSON {
-	return intentionJSON{
+	j := intentionJSON{
 		Jeton: i.Jeton, Titre: i.Titre, Description: i.Description,
 		Quand: i.Quand.String, Fin: i.Fin.String, Lieu: i.Lieu, URLExterne: i.URLExterne.String,
-		Nature: i.Nature, JyVais: i.JyVais && !i.Repere(), Annulee: i.AnnuleeLe.Valid,
+		JyVais: i.JyVais && i.Tendue(), Annulee: i.AnnuleeLe.Valid,
 	}
+	if i.Tendue() {
+		q, f := i.DatesPerche()
+		j.Perche = &percheJSON{TendueLe: i.PercheTendueLe.String, Quand: q.String, Fin: f.String}
+	}
+	return j
 }
 
 func servirJSONPublic(w http.ResponseWriter, liste *Liste, intentions []Intention) {

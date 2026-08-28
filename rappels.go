@@ -31,7 +31,7 @@ func (app *App) purgerEmails() {
 // logistique, rien de social.
 func (app *App) envoyerRappels() {
 	rows, err := app.db.Query(`
-		SELECT r.id, r.email, r.prenom, i.titre, i.quand, i.lieu, i.jeton
+		SELECT r.id, r.email, r.prenom, i.titre, coalesce(i.perche_quand, i.quand), i.lieu, i.jeton
 		FROM reponses r
 		JOIN intentions i ON i.id = r.intention_id
 		JOIN listes l ON l.id = i.liste_id
@@ -39,9 +39,9 @@ func (app *App) envoyerRappels() {
 		  AND l.fermee_le IS NULL
 		  AND r.statut <> 'jaurais_aime'
 		  AND i.annulee_le IS NULL
-		  AND i.nature = 'perche'
+		  AND i.perche_tendue_le IS NOT NULL
 		  AND i.quand IS NOT NULL
-		  AND date(i.quand) = date('now', 'localtime', '+1 day')
+		  AND date(coalesce(i.perche_quand, i.quand)) = date('now', 'localtime', '+1 day')
 		  AND NOT EXISTS (SELECT 1 FROM envois e WHERE e.reponse_id = r.id AND e.type = 'rappel_veille')`)
 	if err != nil {
 		log.Printf("rappels : %v", err)

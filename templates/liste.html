@@ -5,22 +5,18 @@
 {{with .Liste.Lettre}}<div class="lettre">{{md .}}</div>{{end}}
 {{end}}
 <section id="perches">
+{{if or .NbPerches .Filtre}}
+<p class="filtre"><a href="/l/{{.Liste.Slug}}"{{if not .Filtre}} class="actif" aria-current="true"{{end}}>Tout</a><a href="/l/{{.Liste.Slug}}?perches"{{if .Filtre}} class="actif" aria-current="true"{{end}}>Perches</a>{{if .Filtre}}<span class="discret">les événements où j'y vais, si ça te dit</span>{{end}}</p>
+{{end}}
 {{if .Perches}}
-{{if .Reperes}}<h2>Perches</h2>{{end}}
 <div class="perches">
 {{range .Perches}}{{template "carte" .}}{{end}}
 </div>
-{{else if and (not .Reperes) (not .Liste.FermeeLe.Valid)}}
+<p class="exports"><a href="/l/{{.Liste.Slug}}.ics">Ajouter ces dates à mon calendrier</a></p>
+{{else if .Filtre}}
 <p class="vide">Aucune perche pour le moment.</p>
+{{else if not .Liste.FermeeLe.Valid}}
+<p class="vide">Rien de repéré pour le moment.</p>
 {{end}}
 </section>
-{{if .Reperes}}
-<section id="reperes">
-<h2>Repéré</h2>
-<div class="perches">
-{{range .Reperes}}{{template "carte" .}}{{end}}
-</div>
-</section>
-{{end}}
-{{if or .Perches .Reperes}}<p class="exports"><a href="/l/{{.Liste.Slug}}.ics">Ajouter toutes ces dates à mon calendrier</a></p>{{end}}
 {{template "pied" .}}

@@ -67,12 +67,30 @@ func migrer(db *sql.DB) error {
 			return err
 		}
 	}
-	// 2026-08-28 (lot E) : curation — colonne nature (perche | repere). ALTER ne sait pas poser
-	// la contrainte CHECK : sur une base migrée, c'est le code qui la tient (creerIntention).
-	db.QueryRow(`SELECT count(*) FROM pragma_table_info('intentions') WHERE name = 'nature'`).Scan(&n)
+	// 2026-08-28 (lot F) : tout est repéré, la perche est un geste posé dessus — perche_tendue_le,
+	// perche_quand, perche_fin remplacent nature (lot E, éphémère). Les perches existantes
+	// gardent les dates de leur événement. Les CHECK ne se posent pas par ALTER : le code les tient.
+	db.QueryRow(`SELECT count(*) FROM pragma_table_info('intentions') WHERE name = 'perche_tendue_le'`).Scan(&n)
 	if n == 0 {
-		if _, err := db.Exec(`ALTER TABLE intentions ADD COLUMN nature TEXT NOT NULL DEFAULT 'perche'`); err != nil {
-			return err
+		for _, col := range []string{"perche_tendue_le", "perche_quand", "perche_fin"} {
+			if _, err := db.Exec(`ALTER TABLE intentions ADD COLUMN ` + col + ` TEXT`); err != nil {
+				return err
+			}
+		}
+		var avecNature int
+		db.QueryRow(`SELECT count(*) FROM pragma_table_info('intentions') WHERE name = 'nature'`).Scan(&avecNature)
+		if avecNature > 0 {
+			if _, err := db.Exec(`UPDATE intentions SET perche_tendue_le = cree_le, perche_quand = quand, perche_fin = fin WHERE nature = 'perche'`); err != nil {
+				return err
+			}
+			if _, err := db.Exec(`ALTER TABLE intentions DROP COLUMN nature`); err != nil {
+				return err
+			}
+		} else {
+			// base d'avant le lot E : tout était perche
+			if _, err := db.Exec(`UPDATE intentions SET perche_tendue_le = cree_le, perche_quand = quand, perche_fin = fin`); err != nil {
+				return err
+			}
 		}
 	}
 	if strings.Contains(def, "jaurais_aime") {

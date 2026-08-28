@@ -127,7 +127,16 @@ a { color: var(--bois); text-decoration-thickness: 1px; text-underline-offset: .
 .quand { font-size: .88rem; color: var(--doux); margin: 0; }
 .engagement { font-size: .92rem; margin: 0 0 1.4rem; padding: .6rem .9rem; background: var(--bois-doux); border-radius: 6px; }
 .engagement.repere { background: transparent; border: 1px solid var(--trait); color: var(--doux); }
-section#reperes { margin-top: 2rem; }
+/* la chronologie : un filtre (deux liens) et un signe — le bâton — sur les événements où une perche est tendue */
+.filtre { display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap; font-family: var(--sans); font-size: .88rem; margin: 1.6rem 0 0; }
+.filtre a { color: var(--doux); text-decoration: none; padding-bottom: .15rem; border-bottom: 1px solid transparent; }
+.filtre a:hover { color: var(--encre); }
+.filtre a.actif { color: var(--encre); border-bottom-color: var(--encre); }
+.signe { width: .8em; height: .8em; border-radius: 3px; vertical-align: -.02em; }
+.etat-perche { font-family: var(--sans); font-size: .88rem; color: var(--encre); margin: .2rem 0 .4rem; display: flex; align-items: center; gap: .4rem; }
+summary.tendre { color: var(--encre); font-weight: 500; }
+.tendre-bloc { border: 1px solid var(--trait); border-radius: 8px; padding: .2rem .9rem .6rem; margin: 1rem 0; }
+.tendre-bloc label.case { font-size: .95rem; color: var(--encre); margin: .6rem 0 .2rem; }
 .merci { border: 1px solid var(--trait); border-radius: 8px; padding: .9rem 1.1rem; margin: 0 0 1.6rem; background: var(--surface); font-family: var(--sans); font-size: .95rem; }
 .merci p { margin: .3rem 0; }
 

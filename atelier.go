@@ -76,15 +76,13 @@ func (app *App) confirmerAnnulation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	action := fmt.Sprintf("/e/%s/intentions/%d/annuler", liste.JetonEdition, intention.ID)
-	if intention.Repere() {
-		app.confirmer(w, r, "Retirer « "+intention.Titre+" » ?",
-			"Il quittera ta page ; personne n'est prévenu. Tu pourras le rétablir tant que la date n'est pas passée.",
-			action, "Oui, retirer", "/e/"+liste.JetonEdition)
-		return
+	question := "Il quittera ta page ; personne n'est prévenu."
+	if intention.Tendue() {
+		question = prevenus(app.nbAvecEmail(intention.ID)) + " La perche disparaît avec l'événement."
 	}
-	app.confirmer(w, r, "Annuler « "+intention.Titre+" » ?",
-		prevenus(app.nbAvecEmail(intention.ID))+" Tu pourras rétablir la perche tant que la date n'est pas passée.",
-		action, "Oui, annuler", "/e/"+liste.JetonEdition)
+	app.confirmer(w, r, "Retirer « "+intention.Titre+" » de ta page ?",
+		question+" Tu pourras le rétablir tant que la date n'est pas passée.",
+		action, "Oui, retirer", "/e/"+liste.JetonEdition)
 }
 
 func (app *App) retablirIntention(w http.ResponseWriter, r *http.Request) {
@@ -100,8 +98,10 @@ func (app *App) retablirIntention(w http.ResponseWriter, r *http.Request) {
 			app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 			return
 		}
-		app.notifierLogistique(intention.ID, "« "+intention.Titre+" » est de nouveau d'actualité",
-			fmt.Sprintf("« %s » (%s) est finalement maintenu.\n\n%s/i/%s", intention.Titre, intention.QuandFR(), app.baseURL, intention.Jeton))
+		if intention.Tendue() {
+			app.notifierLogistique(intention.ID, "« "+intention.Titre+" » est de nouveau d'actualité",
+				fmt.Sprintf("« %s » (%s) est finalement maintenu.\n\n%s/i/%s", intention.Titre, intention.PercheQuandFR(), app.baseURL, intention.Jeton))
+		}
 	}
 	http.Redirect(w, r, fmt.Sprintf("/e/%s?ok=retablie#perche-%d", liste.JetonEdition, intention.ID), http.StatusSeeOther)
 }

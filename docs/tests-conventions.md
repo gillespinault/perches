@@ -101,11 +101,16 @@ Convention de nommage Go : `TestConvNN_NomParlant`.
 - `TestConv11_TypesDEnvoiBornes` [S] — `INSERT … type='nouveau_participant'` dans
   `envois` → violation de CHECK.
 
-## C12 — Un repéré ne demande rien (lot E, 28 août 2026)
+## C12 — Tout est repéré ; la perche est un geste (lots E et F, 28 août 2026)
 
-- `TestConv12_RepereSansReponse` [H] — un repéré est sur la page publique, dans sa
-  section, sans formulaire ; `POST` d'une réponse → 410 ; aucun rappel ; l'export dit sa
-  nature ; « en faire une perche » le fait passer dans les perches, avec formulaire.
+- `TestConv12_RepereSansReponse` [H] — un repéré est sur la page, sans formulaire, sans
+  signe, sans filtre ; `POST` d'une réponse → 410 ; aucun rappel ; l'export ne porte pas
+  de `perche_tendue`. Tendre la perche : formulaire, signe, filtre « Perches », rappel la
+  veille de *sa* date. Retirer la perche : confirmation, e-mails connus prévenus,
+  l'événement reste, l'hôte garde les réponses.
+- `TestDecision_PercheAvecSesPropresDates` [H] — l'événement a ses dates, la perche les
+  siennes : la page dit les deux, la chronologie et l'agenda ne montrent que celles de la
+  perche, le rappel les suit, les changer prévient sans toucher à l'événement.
 
 ---
 

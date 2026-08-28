@@ -66,9 +66,9 @@ func intentionTest(t *testing.T, app *App, quand, titre, visibilite string) *Int
 	t.Helper()
 	compteurJeton++
 	j := fmt.Sprintf("jetontest%d", compteurJeton)
-	_, err := app.db.Exec(`INSERT INTO intentions (liste_id, jeton, titre, description, quand, lieu, visibilite)
-		VALUES (1, ?, ?, 'On ira voir les machines ensemble.', ?, 'Namur', ?)`,
-		j, titre, quand, visibilite)
+	_, err := app.db.Exec(`INSERT INTO intentions (liste_id, jeton, titre, description, quand, lieu, visibilite,
+		perche_tendue_le, perche_quand) VALUES (1, ?, ?, 'On ira voir les machines ensemble.', ?, 'Namur', ?, datetime('now'), ?)`,
+		j, titre, quand, visibilite, quand)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +282,7 @@ func TestConv04_PasDeCapacite(t *testing.T) {
 func TestConv05_DefautSchemaEtAffichage(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	rec := POST(app, "/e/edtest/intentions", url.Values{"titre": {"Expo"}, "date": {dans(3)}})
+	rec := POST(app, "/e/edtest/intentions", url.Values{"tendre": {"1"}, "titre": {"Expo"}, "date": {dans(3)}})
 	if rec.Code != 303 {
 		t.Fatalf("création refusée : %d %s", rec.Code, rec.Body.String())
 	}
@@ -920,7 +920,7 @@ func TestSecurite_XForwardedForNestCruQueDerriereUnProxy(t *testing.T) {
 func TestSecurite_URLExterneFiltree(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	POST(app, "/e/edtest/intentions", url.Values{"titre": {"Expo"}, "date": {dans(3)}, "url_externe": {"javascript:alert(1)"}})
+	POST(app, "/e/edtest/intentions", url.Values{"tendre": {"1"}, "titre": {"Expo"}, "date": {dans(3)}, "url_externe": {"javascript:alert(1)"}})
 	var u sql.NullString
 	app.db.QueryRow(`SELECT url_externe FROM intentions WHERE titre = 'Expo'`).Scan(&u)
 	if u.Valid {
@@ -980,7 +980,7 @@ func TestDecision_UneReponseParPrenom(t *testing.T) {
 func TestDecision_PlusDOptionAConfirmer(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	POST(app, "/e/edtest/intentions", url.Values{"titre": {"Expo"}, "date": {dans(3)}, "jy_vais": {"0"}})
+	POST(app, "/e/edtest/intentions", url.Values{"tendre": {"1"}, "titre": {"Expo"}, "date": {dans(3)}, "jy_vais": {"0"}})
 	var jy bool
 	app.db.QueryRow(`SELECT jy_vais_de_toute_facon FROM intentions WHERE titre = 'Expo'`).Scan(&jy)
 	if !jy {
@@ -1057,7 +1057,7 @@ func TestDecision_EmailsDesInvitesPurges(t *testing.T) {
 func TestDecision_ErreursDansLeGabarit(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	rec := POST(app, "/e/edtest/intentions", url.Values{"titre": {"Expo"}})
+	rec := POST(app, "/e/edtest/intentions", url.Values{"tendre": {"1"}, "titre": {"Expo"}})
 	body := rec.Body.String()
 	if rec.Code != 400 || !strings.Contains(body, "<main") || !strings.Contains(body, `href="/e/edtest"`) || strings.Contains(body, "variante") {
 		t.Fatalf("une erreur est une page du site avec un retour à l'atelier, reçu %d : %s", rec.Code, body[:min(200, len(body))])
@@ -1087,7 +1087,7 @@ func TestDecision_ConfirmerAvantAnnulerEtEffacer_PuisRetablir(t *testing.T) {
 	if page := GET(app, fmt.Sprintf("/e/edtest/reponses/%d/effacer", idRep)).Body.String(); !strings.Contains(page, "Effacer la réponse de Anna") || !strings.Contains(page, "belle idée") {
 		t.Fatal("effacer passe par une page qui nomme la personne et son mot")
 	}
-	if page := GET(app, fmt.Sprintf("/e/edtest/intentions/%d/annuler", i.ID)).Body.String(); !strings.Contains(page, "Annuler « KIKK » ?") || !strings.Contains(page, "sera prévenue") {
+	if page := GET(app, fmt.Sprintf("/e/edtest/intentions/%d/annuler", i.ID)).Body.String(); !strings.Contains(page, "Retirer « KIKK » de ta page ?") || !strings.Contains(page, "sera prévenue") {
 		t.Fatal("annuler passe par une page qui dit qui sera prévenu")
 	}
 	atelier := GET(app, "/e/edtest").Body.String()
@@ -1176,9 +1176,9 @@ func TestDecision_AtelierStable(t *testing.T) {
 	if page := GET(app, "/e/edtest?ok=lettre").Body.String(); !strings.Contains(page, "Enregistré") || strings.Index(page, `id="lettre"`) > strings.Index(page, `id="perches"`) {
 		t.Fatal("l'introduction est confirmée et reste en tête de l'atelier")
 	}
-	rec = POST(app, "/e/edtest/intentions", url.Values{"titre": {"Expo"}, "date": {dans(3)}})
-	if !strings.HasSuffix(rec.Header().Get("Location"), "?ok=perche#perches") {
-		t.Fatalf("tendre une perche ramène aux perches, reçu %q", rec.Header().Get("Location"))
+	rec = POST(app, "/e/edtest/intentions", url.Values{"tendre": {"1"}, "titre": {"Expo"}, "date": {dans(3)}})
+	if !strings.Contains(rec.Header().Get("Location"), "?ok=ajoute#perche-") {
+		t.Fatalf("ajouter ramène à l'événement ajouté, reçu %q", rec.Header().Get("Location"))
 	}
 }
 
@@ -1240,7 +1240,7 @@ func TestDecision_PercheSurPlusieursJours(t *testing.T) {
 	// Premier retour d'usage (Arles, 28 septembre → 2 octobre) : une perche peut durer.
 	app, _ := appTest(t)
 	listeTest(t, app)
-	rec := POST(app, "/e/edtest/intentions", url.Values{"titre": {"Arles"}, "date": {ilYA(1)}, "fin": {dans(2)}})
+	rec := POST(app, "/e/edtest/intentions", url.Values{"tendre": {"1"}, "titre": {"Arles"}, "date": {ilYA(1)}, "fin": {dans(2)}})
 	if rec.Code != 303 {
 		t.Fatalf("création avec une fin : %d %s", rec.Code, rec.Body.String())
 	}
@@ -1336,24 +1336,25 @@ func TestDecision_MenuEtTheme(t *testing.T) {
 	}
 }
 
-// ---- C12 : un repéré ne demande rien (lot E, 2026-08-28) ----
+// ---- C12 : tout est repéré ; la perche est un geste posé dessus (lots E et F, 2026-08-28) ----
 
 func TestConv12_RepereSansReponse(t *testing.T) {
 	app, m := appTest(t)
 	listeTest(t, app)
-	rec := POST(app, "/e/edtest/intentions", url.Values{"titre": {"Expo Ensor"}, "date": {dans(1)}, "fin": {dans(60)}, "nature": {"repere"}})
-	if rec.Code != 303 || !strings.HasSuffix(rec.Header().Get("Location"), "?ok=repere#reperes") {
-		t.Fatalf("créer un repéré : %d %q", rec.Code, rec.Header().Get("Location"))
+	// Repérer sans tendre la perche : sur la page, sans formulaire, sans rappel, refus d'une réponse.
+	rec := POST(app, "/e/edtest/intentions", url.Values{"titre": {"Expo Ensor"}, "date": {dans(1)}, "fin": {dans(60)}})
+	if rec.Code != 303 || !strings.Contains(rec.Header().Get("Location"), "?ok=ajoute#perche-") {
+		t.Fatalf("repérer : %d %q", rec.Code, rec.Header().Get("Location"))
 	}
 	var j string
 	var id int64
 	app.db.QueryRow(`SELECT jeton, id FROM intentions WHERE titre = 'Expo Ensor'`).Scan(&j, &id)
 	page := GET(app, "/l/test").Body.String()
-	if !strings.Contains(page, "Repéré") || !strings.Contains(page, "Expo Ensor") || strings.Contains(page, `name="statut"`) || !strings.Contains(page, "sans engagement") {
-		t.Fatal("un repéré est sur la page, dans sa section, sans formulaire de réponse")
+	if !strings.Contains(page, "Expo Ensor") || strings.Contains(page, `name="statut"`) || !strings.Contains(page, "sans engagement") || strings.Contains(page, `class="signe"`) {
+		t.Fatal("un repéré est sur la page, sans formulaire ni signe de perche")
 	}
-	if strings.Contains(page, "<h2>Perches</h2>") {
-		t.Fatal("sans perche, pas d'étiquette « Perches »")
+	if strings.Contains(page, `class="filtre"`) {
+		t.Fatal("sans perche tendue, pas de filtre")
 	}
 	if p := GET(app, "/i/"+j).Body.String(); strings.Contains(p, `name="statut"`) || !strings.Contains(p, "sans engagement") {
 		t.Fatal("la page d'un repéré n'a pas de formulaire")
@@ -1365,16 +1366,77 @@ func TestConv12_RepereSansReponse(t *testing.T) {
 	if len(m.Envois) != 0 {
 		t.Fatal("aucun rappel pour un repéré")
 	}
-	if !strings.Contains(GET(app, "/e/edtest/export.json").Body.String(), `"nature":"repere"`) {
-		t.Fatal("l'export dit la nature")
+	if strings.Contains(GET(app, "/e/edtest/export.json").Body.String(), `"perche_tendue":`) {
+		t.Fatal("l'export d'un repéré ne porte pas de perche")
 	}
-	// l'entonnoir : en faire une perche
-	if rec := POST(app, fmt.Sprintf("/e/edtest/intentions/%d/perche", id), nil); rec.Code != 303 {
-		t.Fatalf("en faire une perche : %d", rec.Code)
+	// Tendre la perche — avec ses propres dates, dans l'événement.
+	if rec := POST(app, fmt.Sprintf("/e/edtest/intentions/%d/perche", id), url.Values{"perche_date": {dans(1)}}); rec.Code != 303 {
+		t.Fatalf("tendre la perche : %d", rec.Code)
 	}
 	page = GET(app, "/l/test").Body.String()
-	if !strings.Contains(page, `name="statut"`) || strings.Contains(page, "<h2>Repéré</h2>") {
-		t.Fatal("devenue perche, elle prend des réponses et quitte la section « Repéré »")
+	if !strings.Contains(page, `name="statut"`) || !strings.Contains(page, `class="signe"`) || !strings.Contains(page, `class="filtre"`) {
+		t.Fatal("perche tendue : formulaire, signe et filtre")
 	}
-	repondreTest(t, app, j, "Anna", "jy_serai", "", "")
+	if p := GET(app, "/l/test?perches").Body.String(); !strings.Contains(p, "Expo Ensor") {
+		t.Fatal("le filtre « Perches » garde les perches tendues")
+	}
+	repondreTest(t, app, j, "Anna", "jy_serai", "", "anna@exemple.be")
+	app.envoyerRappels()
+	if len(m.Envois) != 1 || !strings.Contains(m.Envois[0].Sujet, "demain") {
+		t.Fatalf("le rappel de la veille suit la date de la perche, envois : %+v", m.Envois)
+	}
+	// Retirer la perche : l'événement reste repéré, ceux qui ont un e-mail sont prévenus, la réponse reste dans l'édition.
+	if !strings.Contains(GET(app, fmt.Sprintf("/e/edtest/intentions/%d/retirer-perche", id)).Body.String(), "sera prévenue") {
+		t.Fatal("retirer la perche passe par une confirmation qui dit qui est prévenu")
+	}
+	m.Envois = nil
+	if rec := POST(app, fmt.Sprintf("/e/edtest/intentions/%d/retirer-perche", id), nil); rec.Code != 303 || len(m.Envois) != 1 {
+		t.Fatalf("retirer la perche : %d, envois %d", rec.Code, len(m.Envois))
+	}
+	page = GET(app, "/l/test").Body.String()
+	if !strings.Contains(page, "Expo Ensor") || strings.Contains(page, `name="statut"`) || !strings.Contains(page, "sans engagement") {
+		t.Fatal("perche retirée : l'événement reste, sans formulaire")
+	}
+	if !strings.Contains(GET(app, "/e/edtest").Body.String(), "Anna") {
+		t.Fatal("l'hôte garde la réponse reçue")
+	}
+}
+
+func TestDecision_PercheAvecSesPropresDates(t *testing.T) {
+	// Lot F : l'événement a ses dates, la perche les siennes — l'invité ne voit que celles de l'hôte.
+	app, m := appTest(t)
+	listeTest(t, app)
+	rec := POST(app, "/e/edtest/intentions", url.Values{"titre": {"KIKK"}, "date": {dans(1)}, "fin": {dans(5)},
+		"tendre": {"1"}, "perche_date": {dans(3)}, "perche_heure": {"14:00"}})
+	if rec.Code != 303 {
+		t.Fatalf("repérer et tendre : %d %s", rec.Code, rec.Body.String())
+	}
+	var j string
+	app.db.QueryRow(`SELECT jeton FROM intentions WHERE titre = 'KIKK'`).Scan(&j)
+	i, _, _ := app.intentionParJeton(j)
+	if i.PercheQuand.String != dans(3)+"T14:00" || i.PercheFin.Valid || i.Fin.String != dans(5) {
+		t.Fatalf("dates de la perche et de l'événement : %+v", i)
+	}
+	page := GET(app, "/i/"+j).Body.String()
+	if !strings.Contains(page, "du ") || !strings.Contains(page, "J'y vais ") || !strings.Contains(page, "à 14h00") {
+		t.Fatal("la page dit les dates de l'événement, puis quand l'hôte y va")
+	}
+	if !strings.Contains(GET(app, "/l/test").Body.String(), i.JourCourt()) || strings.Contains(GET(app, "/l/test").Body.String(), "→ ") {
+		t.Fatal("la chronologie montre la date de la perche, pas la période de l'événement")
+	}
+	if ics := GET(app, "/i/"+j+".ics").Body.String(); !strings.Contains(ics, "DTSTART:"+strings.ReplaceAll(dans(3), "-", "")+"T140000") {
+		t.Fatalf("l'agenda reçoit la date de la perche : %s", ics)
+	}
+	repondreTest(t, app, j, "Anna", "jy_serai", "", "anna@exemple.be")
+	app.envoyerRappels()
+	if len(m.Envois) != 0 {
+		t.Fatal("pas de rappel : la perche est dans trois jours, pas demain")
+	}
+	// Changer les dates de la perche prévient ; le jour de l'événement ne bouge pas.
+	m.Envois = nil
+	POST(app, fmt.Sprintf("/e/edtest/intentions/%d/perche", i.ID), url.Values{"perche_date": {dans(4)}})
+	i2, _, _ := app.intentionParJeton(j)
+	if len(m.Envois) != 1 || i2.PercheQuand.String != dans(4) || i2.Quand.String != dans(1) {
+		t.Fatalf("changer quand j'y vais : envois %d, perche %q, événement %q", len(m.Envois), i2.PercheQuand.String, i2.Quand.String)
+	}
 }

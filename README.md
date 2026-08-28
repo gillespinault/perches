@@ -27,13 +27,17 @@ viendra plus tard), éventuellement un dernier jour si elle dure, un lieu, et la
 - **Elle est asymétrique et l'assume.** L'hôte y va de toute façon ; l'invité s'ajoute ou non. Personne ne dépend de personne.
 - **Elle porte son mode d'emploi.** Les conventions sont affichées par l'outil, pas par la personne — en une phrase, sans commentaire.
 
-## Le repéré : la curation à côté de l'intention
+## Tout est repéré ; la perche est un geste
 
-Depuis le 28 août 2026, une liste porte deux choses. La *perche* : « j'y vais, si ça te
-dit ». Le *repéré* : « ça m'a l'air intéressant » — un événement signalé, daté comme une
-perche, mais sans engagement et sans formulaire de réponse. Une liste qui propose est
-plus généreuse qu'une liste qui demande, et elle vit entre deux perches. Quand l'hôte se
-décide, un repéré devient une perche d'un geste ; dans l'autre sens, c'est « retirer ».
+Depuis le 28 août 2026, une liste est une chronologie d'événements *repérés* — « ça m'a
+l'air intéressant » : un titre, les dates de l'événement, un lieu, un lien, quelques mots.
+Signalé, sans engagement, sans formulaire de réponse. Sur certains, l'hôte *tend une
+perche* : « j'y vais, si ça te dit » — avec **ses propres dates** (le samedi d'un festival
+de cinq jours), qui sont les seules que les invités reçoivent : dans la chronologie, le
+rappel de la veille, le fichier calendrier. Une liste qui propose est plus généreuse
+qu'une liste qui demande, et elle vit entre deux perches. La perche se tend et se retire
+d'un geste ; l'événement reste. Un filtre « Perches » sur la page ne garde que les
+événements où l'hôte y va.
 
 ## Les conventions
 
@@ -51,7 +55,7 @@ structure — boutons, champs, absence de champs — et sont encodées en tests.
 9. Ce qui est passé disparaît de la page ; l'hôte garde ses lettres.
 10. La page est une lettre avant d'être un formulaire : le texte libre passe avant la mécanique.
 11. On ne notifie que ce qui ferait manquer le rendez-vous (annulation, changement de date ou de lieu) — jamais rien de social.
-12. Un *repéré* ne demande rien : ni réponse, ni engagement. Il se signale, c'est tout — et peut devenir une perche.
+12. Tout est *repéré* et ne demande rien : ni réponse, ni engagement. La perche est un geste posé dessus, avec les dates de l'hôte ; elle se tend et se retire, l'événement reste.
 
 ## Comment ça marche
 

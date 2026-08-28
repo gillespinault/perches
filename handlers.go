@@ -240,10 +240,12 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
-	// même règle que la page de la perche : passée deux heures après l'heure, ou à minuit sans heure
+	// même règle que la page de la perche : passée deux heures après l'heure, ou à minuit sans heure.
+	// Filtre « Perches » (?perches) : la chronologie ne garde que les événements où une perche est tendue.
+	filtre := r.URL.Query().Has("perches")
 	var intentions []Intention
 	for _, i := range toutes {
-		if !i.Passee() && !liste.FermeeLe.Valid {
+		if !i.Passee() && !liste.FermeeLe.Valid && (!filtre || i.Tendue()) {
 			intentions = append(intentions, i)
 		}
 	}
@@ -254,26 +256,25 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 		servirJSONPublic(w, liste, intentions)
 	default:
 		merci, percheMerci := merciDe(r), r.URL.Query().Get("perche")
-		perches, reperes := []VuePerche{}, []VuePerche{}
+		vues, nbPerches := []VuePerche{}, 0
 		for k := range intentions {
 			var m map[string]any
 			if merci != nil && intentions[k].Jeton == percheMerci {
 				m = merci
 			}
-			v := app.vuePerche(&intentions[k], liste, m, true)
-			if v.I.Repere() {
-				reperes = append(reperes, v)
-			} else {
-				perches = append(perches, v)
+			if intentions[k].Tendue() {
+				nbPerches++
 			}
+			vues = append(vues, app.vuePerche(&intentions[k], liste, m, true))
 		}
 		app.rendre(w, r, "liste.html", map[string]any{
 			"TitrePage": liste.Titre,
-			"OG":        app.og(liste.Titre, descriptionOG(sansMarkdown(liste.Lettre), len(perches)), "/l/"+liste.Slug),
+			"OG":        app.og(liste.Titre, descriptionOG(sansMarkdown(liste.Lettre), nbPerches), "/l/"+liste.Slug),
 			"Alternate": app.baseURL + "/l/" + liste.Slug + ".json",
 			"Liste":     liste,
-			"Perches":   perches,
-			"Reperes":   reperes,
+			"Perches":   vues,
+			"NbPerches": nbPerches,
+			"Filtre":    filtre,
 		})
 	}
 }
@@ -382,7 +383,7 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 		app.erreur(w, r, http.StatusGone, "Un repéré ne prend pas de réponse : il est signalé, sans engagement.")
 		return
 	}
-	if intention.AnnuleeLe.Valid || intention.Passee() || liste.FermeeLe.Valid {
+	if intention.AnnuleeLe.Valid || intention.PerchePassee() || liste.FermeeLe.Valid {
 		app.erreur(w, r, http.StatusGone, "Cette perche ne prend plus de réponse.")
 		return
 	}
@@ -471,17 +472,14 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	app.retenirAtelier(w, liste.JetonEdition)
-	var aVenir, reperes, passees []Intention
+	var aVenir, passees []Intention
 	total := 0
 	for k := range intentions {
 		app.chargerReponses(&intentions[k])
 		total += len(intentions[k].Reponses)
-		switch {
-		case intentions[k].AnnuleeLe.Valid || intentions[k].Passee():
+		if intentions[k].AnnuleeLe.Valid || intentions[k].Passee() {
 			passees = append(passees, intentions[k])
-		case intentions[k].Repere():
-			reperes = append(reperes, intentions[k])
-		default:
+		} else {
 			aVenir = append(aVenir, intentions[k])
 		}
 	}
@@ -489,7 +487,6 @@ func (app *App) editerListe(w http.ResponseWriter, r *http.Request) {
 		"TitrePage":     liste.Titre + " — édition",
 		"Liste":         liste,
 		"AVenir":        aVenir,
-		"Reperes":       reperes,
 		"Passees":       passees,
 		"TotalReponses": total,
 		"BaseURL":       app.baseURL,
@@ -566,13 +563,14 @@ func (app *App) reglages(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/e/"+liste.JetonEdition+"/reglages?ok", http.StatusSeeOther)
 }
 
-// quandDepuisForm : la date (avec l'heure si donnée) et, si la perche dure, son dernier jour —
-// qui doit suivre le premier. Une fin égale au premier jour n'en est pas une.
-func quandDepuisForm(r *http.Request) (quand string, fin any, err error) {
-	date := strings.TrimSpace(r.FormValue("date"))
-	heure := strings.TrimSpace(r.FormValue("heure"))
+// datesDepuisForm : la date (avec l'heure si donnée) et, si ça dure, le dernier jour — qui doit
+// suivre le premier. Une fin égale au premier jour n'en est pas une. Le préfixe distingue les
+// dates de l'événement (« date », « heure », « fin ») de celles de la perche (« perche_date »…).
+func datesDepuisForm(r *http.Request, prefixe string) (quand string, fin any, err error) {
+	date := strings.TrimSpace(r.FormValue(prefixe + "date"))
+	heure := strings.TrimSpace(r.FormValue(prefixe + "heure"))
 	if date == "" {
-		return "", nil, fmt.Errorf("une intention v0 porte une date")
+		return "", nil, fmt.Errorf("il faut une date")
 	}
 	quand = date
 	if heure != "" {
@@ -581,13 +579,24 @@ func quandDepuisForm(r *http.Request) (quand string, fin any, err error) {
 	if _, _, err := analyserQuand(quand); err != nil {
 		return "", nil, err
 	}
-	if f := strings.TrimSpace(r.FormValue("fin")); f != "" && f != date {
+	if f := strings.TrimSpace(r.FormValue(prefixe + "fin")); f != "" && f != date {
 		if _, _, err := analyserQuand(f); err != nil || f < date {
 			return "", nil, fmt.Errorf("la fin précède le début")
 		}
 		fin = f
 	}
 	return quand, fin, nil
+}
+
+func quandDepuisForm(r *http.Request) (string, any, error) { return datesDepuisForm(r, "") }
+
+// datesPercheDepuisForm : quand l'hôte y va — ses dates si le formulaire en donne, sinon
+// celles de l'événement.
+func datesPercheDepuisForm(r *http.Request, quand string, fin any) (string, any, error) {
+	if strings.TrimSpace(r.FormValue("perche_date")) == "" {
+		return quand, fin, nil
+	}
+	return datesDepuisForm(r, "perche_")
 }
 
 func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
@@ -617,26 +626,30 @@ func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("visibilite") == "lien" {
 		visibilite = "lien"
 	}
-	nature := "perche"
-	if r.FormValue("nature") == "repere" { // lot E : un repéré — signalé, sans engagement
-		nature = "repere"
+	// Lot F : tout est repéré ; la perche est un geste posé dessus, avec ses propres dates.
+	var tendueLe, percheQuand, percheFin any
+	if r.FormValue("tendre") != "" {
+		pq, pf, err := datesPercheDepuisForm(r, quand, fin)
+		if err != nil {
+			app.erreur(w, r, http.StatusBadRequest, "Quand j'y vais : il faut une date valide, et une fin qui suit le début.")
+			return
+		}
+		tendueLe, percheQuand, percheFin = "now", pq, pf
 	}
 	jyVais := true // décision 2026-08-28 : « j'y vais de toute façon », sans option
-	_, err = app.db.Exec(`INSERT INTO intentions
-		(liste_id, jeton, titre, description, quand, fin, lieu, url_externe, jy_vais_de_toute_facon, nature, visibilite)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+	res, err := app.db.Exec(`INSERT INTO intentions
+		(liste_id, jeton, titre, description, quand, fin, lieu, url_externe, jy_vais_de_toute_facon,
+		 perche_tendue_le, perche_quand, perche_fin, visibilite)
+		VALUES (?,?,?,?,?,?,?,?,?, CASE WHEN ? IS NULL THEN NULL ELSE datetime('now') END, ?, ?, ?)`,
 		liste.ID, jeton(12), titre, r.FormValue("description"), quand, fin,
 		strings.TrimSpace(r.FormValue("lieu")), nullSi(urlPlausible(r.FormValue("url_externe"))),
-		jyVais, nature, visibilite)
+		jyVais, tendueLe, percheQuand, percheFin, visibilite)
 	if err != nil {
 		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
-	if nature == "repere" {
-		http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=repere#reperes", http.StatusSeeOther)
-		return
-	}
-	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=perche#perches", http.StatusSeeOther)
+	id, _ := res.LastInsertId()
+	http.Redirect(w, r, fmt.Sprintf("/e/%s?ok=ajoute#perche-%d", liste.JetonEdition, id), http.StatusSeeOther)
 }
 
 func (app *App) intentionDuChemin(w http.ResponseWriter, r *http.Request) (*Liste, *Intention, bool) {
@@ -712,8 +725,10 @@ func (app *App) annulerIntention(w http.ResponseWriter, r *http.Request) {
 			app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 			return
 		}
-		app.notifierLogistique(intention.ID, "annulation : "+intention.Titre,
-			fmt.Sprintf("« %s » (%s) est annulé.\n\n%s/i/%s", intention.Titre, intention.QuandFR(), app.baseURL, intention.Jeton))
+		if intention.Tendue() {
+			app.notifierLogistique(intention.ID, "annulation : "+intention.Titre,
+				fmt.Sprintf("« %s » (%s) est annulé.\n\n%s/i/%s", intention.Titre, intention.PercheQuandFR(), app.baseURL, intention.Jeton))
+		}
 	}
 	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=annulee#archive", http.StatusSeeOther)
 }
@@ -756,9 +771,14 @@ func (app *App) majIntention(w http.ResponseWriter, r *http.Request) {
 		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
+	// Une perche tendue « tout du long » suit les dates de l'événement quand elles bougent.
+	if intention.Tendue() && intention.PercheAuxDatesDeLEvenement() {
+		app.db.Exec(`UPDATE intentions SET perche_quand = ?, perche_fin = ? WHERE id = ?`, quand, fin, intention.ID)
+		intention.PercheQuand, intention.PercheFin = sqlString(quand), sqlString(finTexte)
+	}
 	intention.Titre, intention.Quand, intention.Fin = titre, sqlString(quand), sqlString(finTexte)
-	if change && !intention.AnnuleeLe.Valid {
-		msg := fmt.Sprintf("« %s » change : %s", intention.Titre, intention.QuandFR())
+	if change && intention.Tendue() && !intention.AnnuleeLe.Valid {
+		msg := fmt.Sprintf("« %s » change : %s", intention.Titre, intention.PercheQuandFR())
 		if lieu != "" {
 			msg += " — " + lieu
 		}

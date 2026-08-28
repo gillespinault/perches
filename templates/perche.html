@@ -1,4 +1,5 @@
-{{/* Le corps d'une perche — le même sur sa page et dans sa carte de la liste (lot B2). Reçoit une VuePerche. */}}
+{{/* Le corps d'un événement — le même sur sa page et dans sa carte de la chronologie. Reçoit une VuePerche.
+     Tout est repéré ; si une perche est tendue, la carte dit quand l'hôte y va et prend des réponses. */}}
 {{define "perche-corps"}}
 {{with .Merci}}
 <aside class="merci">
@@ -9,10 +10,10 @@
 </aside>
 {{end}}
 {{with .I.Description}}<div class="description">{{md .}}</div>{{end}}
-{{if .I.Repere}}
-{{if .Ouverte}}<p class="engagement repere">Repéré, sans engagement.</p>{{else if not .I.AnnuleeLe.Valid}}<p class="passee">C'est passé.</p>{{end}}
+{{if not .Tendue}}
+{{if not .I.AnnuleeLe.Valid}}<p class="engagement repere">Repéré, sans engagement.</p>{{end}}
 {{else if .Ouverte}}
-<p class="engagement">J'y vais de toute façon.</p>
+<p class="engagement">{{if .I.PercheAuxDatesDeLEvenement}}J'y vais de toute façon.{{else}}J'y vais {{.I.PercheQuandFR}} — de toute façon.{{end}}</p>
 {{with .Presences}}<p class="qui">{{.}}</p>{{end}}
 {{with .PeutEtre}}<p class="qui">Peut-être : {{joindre . ", "}}.</p>{{end}}
 {{with .AuraitAime}}<p class="qui">{{.}}</p>{{end}}
@@ -48,19 +49,19 @@ Mon prénom peut apparaître sur cette page</label>
 
 {{define "perche-meta"}}<p class="meta"><b>{{.QuandFR}}</b>{{with .Lieu}} · {{.}}{{end}}{{if .URLExterne.Valid}} · <a href="{{.URLExterne.String}}" rel="noopener" title="{{.URLExterne.String}}">site ↗</a>{{end}}</p>{{end}}
 
-{{/* Une carte de la liste : la ligne, puis la perche entière qui s'ouvre sur place. Reçoit une VuePerche. */}}
+{{/* Une carte de la chronologie : la ligne, puis l'événement entier qui s'ouvre sur place. Reçoit une VuePerche. */}}
 {{define "carte"}}
-<details class="perche{{if .I.Repere}} repere{{end}}" name="perches" id="p-{{.I.Jeton}}"{{if .Ouvrir}} open{{end}}>
+<details class="perche{{if .Tendue}} tendue{{end}}" name="perches" id="p-{{.I.Jeton}}"{{if .Ouvrir}} open{{end}}>
 <summary>
 <span class="date"><b>{{.I.JourCourt}}</b>{{with .I.Complement}}<span>{{.}}</span>{{end}}</span>
-<span class="quoi">{{.I.Titre}}</span>
+<span class="quoi">{{if .Tendue}}<img src="/static/logo.svg" alt="perche tendue" title="Une perche est tendue : j'y vais, si ça te dit" class="signe"> {{end}}{{.I.Titre}}</span>
 {{with .I.Lieu}}<span class="lieu">{{.}}</span>{{end}}
 <span class="chevron" aria-hidden="true">›</span>
 </summary>
 <div class="corps">
 {{template "perche-meta" .I}}
 {{template "perche-corps" .}}
-<p class="exports"><a href="/i/{{.I.Jeton}}">{{if .I.Repere}}Ce repéré seul{{else}}Cette perche seule{{end}} ↗</a> <a href="/i/{{.I.Jeton}}.ics">Ajouter à mon calendrier</a></p>
+<p class="exports"><a href="/i/{{.I.Jeton}}">Cette page seule ↗</a> <a href="/i/{{.I.Jeton}}.ics">Ajouter à mon calendrier</a></p>
 </div>
 </details>
 {{end}}

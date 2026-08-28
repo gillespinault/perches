@@ -51,15 +51,20 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 </section>
 
 <section class="section" id="perches">
-<h2>Perches</h2>
+<h2>Repérés</h2>
 <div>
-{{if eq .OK "perche"}}<p class="ok">Perche ajoutée — son lien est ci-dessous.</p>{{end}}
+<p class="discret">Tout ce que tu repères est sur ta page. Tendre une perche sur un repéré, c'est dire « j'y vais, si ça te dit » — avec tes dates à toi.</p>
+{{if eq .OK "ajoute"}}<p class="ok">Ajouté.</p>{{end}}
+{{if eq .OK "perche"}}<p class="ok">Perche tendue — son lien est ci-dessous, à envoyer à qui tu veux.</p>{{end}}
+{{if eq .OK "retiree"}}<p class="ok">Perche retirée — l'événement reste repéré.</p>{{end}}
 {{if eq .OK "corrige"}}<p class="ok">Corrigé.</p>{{end}}
-{{if eq .OK "retablie"}}<p class="ok">Rétablie — ceux qui ont laissé un e-mail sont prévenus.</p>{{end}}
+{{if eq .OK "retablie"}}<p class="ok">Rétabli.</p>{{end}}
 {{range .AVenir}}
-<article class="ligne" id="perche-{{.ID}}">
+<article class="ligne{{if .Tendue}} tendue{{end}}" id="perche-{{.ID}}">
 <p class="quand">{{.QuandFR}}{{with .Lieu}} · {{.}}{{end}}{{if eq .Visibilite "lien"}} · par lien seulement{{end}}</p>
 <h3><a href="/i/{{.Jeton}}" target="_blank" rel="noopener">{{.Titre}}</a></h3>
+{{if .Tendue}}
+<p class="etat-perche"><img src="/static/logo.svg" alt="" class="signe"> Perche tendue{{if not .PercheAuxDatesDeLEvenement}} — j'y vais {{.PercheQuandFR}}{{end}}</p>
 <ul class="reponses">
 {{range .Reponses}}
 <li>{{.Prenom}} — {{template "statut" .Statut}}{{with .Mot}} · « {{.}} »{{end}}
@@ -70,15 +75,37 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 </ul>
 <p class="partage copiable"><span id="lien-i-{{.ID}}">{{$.BaseURL}}/i/{{.Jeton}}</span><button type="button" class="discret" hidden data-copier="lien-i-{{.ID}}">copier</button></p>
 <details>
-<summary>Modifier</summary>
+<summary>Quand j'y vais</summary>
+<form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/perche">
+<label>Date <span class="enligne-champs"><input type="date" name="perche_date" value="{{datede .PercheQuand}}" required> <input type="time" name="perche_heure" value="{{heurede .PercheQuand}}"></span></label>
+<label>Jusqu'au — si j'y reste plusieurs jours <input type="date" name="perche_fin" value="{{.PercheFin.String}}"></label>
+<p class="discret">Changer ces dates prévient ceux qui ont laissé un e-mail.</p>
+<p class="actions"><button class="sobre">Enregistrer</button>
+<a class="sobre-lien" href="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/retirer-perche">Retirer la perche…</a></p>
+</form>
+</details>
+{{else}}
+{{if .Reponses}}<p class="discret">Réponses reçues quand la perche était tendue :</p>
+<ul class="reponses">{{range .Reponses}}<li>{{.Prenom}} — {{template "statut" .Statut}}{{with .Mot}} · « {{.}} »{{end}}</li>{{end}}</ul>{{end}}
+<details>
+<summary class="tendre">Tendre la perche</summary>
+<form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/perche">
+<label>Quand j'y vais — par défaut, les dates de l'événement <span class="enligne-champs"><input type="date" name="perche_date" value="{{datede .Quand}}" required> <input type="time" name="perche_heure" value="{{heurede .Quand}}"></span></label>
+<label>Jusqu'au — si j'y reste plusieurs jours <input type="date" name="perche_fin" value="{{.Fin.String}}"></label>
+<button>Tendre la perche — j'y vais, si ça te dit</button>
+</form>
+</details>
+{{end}}
+<details>
+<summary>Modifier l'événement</summary>
 <form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/maj">
 <label>Quoi <input name="titre" required maxlength="120" value="{{.Titre}}"></label>
 <label>Quand — l'heure est optionnelle <span class="enligne-champs"><input type="date" name="date" value="{{datede .Quand}}" required> <input type="time" name="heure" value="{{heurede .Quand}}"></span></label>
+<label>Jusqu'au — si ça dure plusieurs jours <input type="date" name="fin" value="{{.Fin.String}}"></label>
 <label>Où <input name="lieu" value="{{.Lieu}}"></label>
 <label>Quelques mots <textarea name="description" rows="3">{{.Description}}</textarea></label>
 <details>
 <summary>Plus d'options</summary>
-<label>Jusqu'au — si ça dure plusieurs jours <input type="date" name="fin" value="{{.Fin.String}}"></label>
 <label>Lien externe <input name="url_externe" type="url" value="{{.URLExterne.String}}"></label>
 <label>Visibilité
 <select name="visibilite">
@@ -86,25 +113,25 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 <option value="lien"{{if eq .Visibilite "lien"}} selected{{end}}>par lien seulement</option>
 </select></label>
 </details>
-<p class="discret">Si la date ou le lieu change, ceux qui ont laissé un e-mail sont prévenus. Rien d'autre ne part.</p>
+{{if .Tendue}}<p class="discret">Si la date ou le lieu change, ceux qui ont laissé un e-mail sont prévenus. Rien d'autre ne part.</p>{{end}}
 <p class="actions"><button class="sobre">Enregistrer</button>
-<a class="sobre-lien" href="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/annuler">Annuler cette perche…</a></p>
+<a class="sobre-lien" href="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/annuler">Retirer de ma page…</a></p>
 </form>
 </details>
 </article>
 {{else}}
-<p class="vide">Aucune perche.</p>
+<p class="vide">Rien de repéré.</p>
 {{end}}
 <details class="nouvelle" id="nouvelle">
-<summary>Nouvelle perche</summary>
+<summary>Repérer un événement</summary>
 <form method="post" action="/e/{{.Liste.JetonEdition}}/intentions">
-<label>Quoi <input name="titre" required maxlength="120" placeholder="Balade au parc, ciné, expo…"></label>
+<label>Quoi <input name="titre" required maxlength="120" placeholder="Une expo, un festival, une balade, un ciné…"></label>
 <label>Quand — l'heure est optionnelle <span class="enligne-champs"><input type="date" name="date" required> <input type="time" name="heure"></span></label>
+<label>Jusqu'au — si ça dure plusieurs jours <input type="date" name="fin"></label>
 <label>Où <input name="lieu"></label>
-<label>Quelques mots <textarea name="description" rows="3" placeholder="Le contexte, l'envie, ce qu'il faut savoir."></textarea></label>
+<label>Quelques mots <textarea name="description" rows="3" placeholder="Le contexte, ce qu'il faut savoir, pourquoi ça t'a l'air intéressant."></textarea></label>
 <details>
 <summary>Plus d'options</summary>
-<label>Jusqu'au — si ça dure plusieurs jours <input type="date" name="fin"></label>
 <label>Lien externe (l'expo, le festival…) <input name="url_externe" type="url"></label>
 <label>Visibilité
 <select name="visibilite">
@@ -112,50 +139,12 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 <option value="lien">par lien seulement — pour un cercle plus restreint</option>
 </select></label>
 </details>
-<button>Ajouter la perche</button>
-</form>
-</details>
-</div>
-</section>
-
-<section class="section" id="reperes">
-<h2>Repéré</h2>
-<div>
-{{if eq .OK "repere"}}<p class="ok">Repéré ajouté.</p>{{end}}
-<p class="discret">Ce qui t'a l'air intéressant, sans intention d'y aller pour l'instant : sur ta page, sans réponse possible. « En faire une perche » quand tu te décides.</p>
-{{range .Reperes}}
-<article class="ligne" id="perche-{{.ID}}">
-<p class="quand">{{.QuandFR}}{{with .Lieu}} · {{.}}{{end}}</p>
-<h3><a href="/i/{{.Jeton}}" target="_blank" rel="noopener">{{.Titre}}</a></h3>
-<form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/perche" class="actions"><button class="sobre">En faire une perche</button></form>
-<details>
-<summary>Modifier</summary>
-<form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/maj">
-<label>Quoi <input name="titre" required maxlength="120" value="{{.Titre}}"></label>
-<label>Quand — l'heure est optionnelle <span class="enligne-champs"><input type="date" name="date" value="{{datede .Quand}}" required> <input type="time" name="heure" value="{{heurede .Quand}}"></span></label>
-<label>Jusqu'au — si ça dure plusieurs jours <input type="date" name="fin" value="{{.Fin.String}}"></label>
-<label>Où <input name="lieu" value="{{.Lieu}}"></label>
-<label>Quelques mots <textarea name="description" rows="3">{{.Description}}</textarea></label>
-<label>Lien externe <input name="url_externe" type="url" value="{{.URLExterne.String}}"></label>
-<p class="actions"><button class="sobre">Enregistrer</button>
-<a class="sobre-lien" href="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/annuler">Retirer ce repéré…</a></p>
-</form>
-</details>
-</article>
-{{else}}
-<p class="vide">Aucun repéré.</p>
-{{end}}
-<details class="nouvelle" id="nouveau-repere">
-<summary>Nouveau repéré</summary>
-<form method="post" action="/e/{{.Liste.JetonEdition}}/intentions">
-<input type="hidden" name="nature" value="repere">
-<label>Quoi <input name="titre" required maxlength="120" placeholder="Une expo, un concert, un festival…"></label>
-<label>Quand — l'heure est optionnelle <span class="enligne-champs"><input type="date" name="date" required> <input type="time" name="heure"></span></label>
-<label>Jusqu'au — si ça dure plusieurs jours <input type="date" name="fin"></label>
-<label>Où <input name="lieu"></label>
-<label>Quelques mots <textarea name="description" rows="3" placeholder="Pourquoi ça t'a l'air intéressant."></textarea></label>
-<label>Lien externe <input name="url_externe" type="url"></label>
-<button>Ajouter le repéré</button>
+<fieldset class="tendre-bloc">
+<label class="case"><input type="checkbox" name="tendre" value="1"> Je tends la perche — j'y vais, si ça te dit</label>
+<label>Quand j'y vais — vide : les dates de l'événement <span class="enligne-champs"><input type="date" name="perche_date"> <input type="time" name="perche_heure"></span></label>
+<label>Jusqu'au <input type="date" name="perche_fin"></label>
+</fieldset>
+<button>Ajouter</button>
 </form>
 </details>
 </div>
@@ -166,21 +155,17 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 <h2>Archive</h2>
 <div>
 <details{{if eq .OK "annulee"}} open{{end}}>
-<summary>{{len .Passees}} {{if eq (len .Passees) 1}}perche passée{{else}}perches passées{{end}} — visibles d'ici seulement</summary>
-{{if eq .OK "annulee"}}<p class="ok">Annulée — ceux qui ont laissé un e-mail sont prévenus.</p>{{end}}
+<summary>{{len .Passees}} {{if eq (len .Passees) 1}}événement passé ou retiré{{else}}événements passés ou retirés{{end}} — visibles d'ici seulement</summary>
+{{if eq .OK "annulee"}}<p class="ok">Retiré de ta page{{if (index .Passees 0).Tendue}} — ceux qui ont laissé un e-mail sont prévenus{{end}}.</p>{{end}}
 {{range .Passees}}
 <article class="ligne passee" id="perche-{{.ID}}">
-<p class="quand">{{.QuandFR}}{{with .Lieu}} · {{.}}{{end}}{{if .Repere}} · repéré{{end}}{{if .AnnuleeLe.Valid}} · {{if .Repere}}retiré{{else}}annulée{{end}}{{end}}</p>
+<p class="quand">{{.QuandFR}}{{with .Lieu}} · {{.}}{{end}}{{if .Tendue}} · perche tendue{{end}}{{if .AnnuleeLe.Valid}} · retiré{{end}}</p>
 <h3>{{.Titre}}</h3>
-<ul class="reponses">
-{{range .Reponses}}
-<li>{{.Prenom}} — {{template "statut" .Statut}}{{with .Mot}} · « {{.}} »{{end}}</li>
-{{else}}
-<li class="vide">Sans réponse.</li>
-{{end}}
-</ul>
+{{if .Reponses}}<ul class="reponses">
+{{range .Reponses}}<li>{{.Prenom}} — {{template "statut" .Statut}}{{with .Mot}} · « {{.}} »{{end}}</li>{{end}}
+</ul>{{else if .Tendue}}<p class="vide">Sans réponse.</p>{{end}}
 {{if and .AnnuleeLe.Valid (not .Passee)}}
-<form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/retablir"><button class="sobre">Rétablir{{if not .Repere}} — ceux qui ont laissé un e-mail seront prévenus{{end}}</button></form>
+<form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/retablir"><button class="sobre">Rétablir{{if .Tendue}} — ceux qui ont laissé un e-mail seront prévenus{{end}}</button></form>
 {{end}}
 </article>
 {{end}}

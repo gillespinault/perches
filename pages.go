@@ -1,8 +1,8 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -14,7 +14,8 @@ import (
 type VuePerche struct {
 	I           *Intention
 	Liste       *Liste
-	Ouverte     bool
+	Tendue      bool // une perche est posée sur ce repéré
+	Ouverte     bool // la perche prend encore des réponses
 	Presences   string
 	PeutEtre    []string
 	AuraitAime  string
@@ -47,7 +48,8 @@ func (app *App) vuePerche(i *Intention, liste *Liste, merci map[string]any, depu
 	}
 	return VuePerche{
 		I: i, Liste: liste,
-		Ouverte:    !i.AnnuleeLe.Valid && !i.Passee() && !liste.FermeeLe.Valid,
+		Tendue:     i.Tendue(),
+		Ouverte:    i.Tendue() && !i.AnnuleeLe.Valid && !i.PerchePassee() && !liste.FermeeLe.Valid,
 		Presences:  phrasePresences(jySerai, discrets),
 		PeutEtre:   peutEtre,
 		AuraitAime: phraseAuraitAime(auraitAime),
@@ -130,8 +132,9 @@ func (app *App) aPropos(w http.ResponseWriter, r *http.Request) {
 	app.rendre(w, r, "apropos.html", map[string]any{"TitrePage": "À propos de Perches", "Politique": app.politique})
 }
 
-// tendrePerche : un repéré devient une perche — l'entonnoir de la curation vers l'intention.
-// Dans l'autre sens, c'est « annuler », qui prévient.
+// tendrePerche : poser une perche sur un repéré — « j'y vais, si ça te dit » — avec ses dates
+// (par défaut, celles de l'événement). Sur une perche déjà tendue, cela corrige ses dates :
+// de la logistique, les e-mails connus sont prévenus.
 func (app *App) tendrePerche(w http.ResponseWriter, r *http.Request) {
 	if app.tropVite(w, r) {
 		return
@@ -140,9 +143,60 @@ func (app *App) tendrePerche(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if _, err := app.db.Exec(`UPDATE intentions SET nature = 'perche' WHERE id = ?`, intention.ID); err != nil {
+	var finEvenement any
+	if intention.Fin.Valid {
+		finEvenement = intention.Fin.String
+	}
+	quand, fin, err := datesPercheDepuisForm(r, intention.Quand.String, finEvenement)
+	if err != nil {
+		app.erreur(w, r, http.StatusBadRequest, "Quand j'y vais : il faut une date valide, et une fin qui suit le début.")
+		return
+	}
+	finTexte, _ := fin.(string)
+	dejaQuand, dejaFin := intention.DatesPerche()
+	change := intention.Tendue() && (quand != dejaQuand.String || finTexte != dejaFin.String)
+	if _, err := app.db.Exec(`UPDATE intentions SET perche_tendue_le = coalesce(perche_tendue_le, datetime('now')),
+		perche_quand = ?, perche_fin = ? WHERE id = ?`, quand, fin, intention.ID); err != nil {
 		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
-	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=perche#perche-"+strconv.FormatInt(intention.ID, 10), http.StatusSeeOther)
+	if change && !intention.AnnuleeLe.Valid {
+		intention.PercheQuand, intention.PercheFin = sqlString(quand), sqlString(finTexte)
+		app.notifierLogistique(intention.ID, "« "+intention.Titre+" » change de date",
+			fmt.Sprintf("« %s » : j'y vais finalement %s.\n\n%s/i/%s", intention.Titre, intention.PercheQuandFR(), app.baseURL, intention.Jeton))
+	}
+	http.Redirect(w, r, fmt.Sprintf("/e/%s?ok=perche#perche-%d", liste.JetonEdition, intention.ID), http.StatusSeeOther)
+}
+
+// retirerPerche : l'hôte n'y va plus — l'événement reste repéré sur la page ; ceux qui ont laissé
+// un e-mail sont prévenus (logistique) ; les réponses restent dans l'édition, comme des lettres.
+func (app *App) confirmerRetraitPerche(w http.ResponseWriter, r *http.Request) {
+	liste, intention, ok := app.intentionDuChemin(w, r)
+	if !ok {
+		return
+	}
+	app.confirmer(w, r, "Retirer la perche sur « "+intention.Titre+" » ?",
+		prevenus(app.nbAvecEmail(intention.ID))+" L'événement reste sur ta page, repéré sans engagement ; les réponses reçues restent ici.",
+		fmt.Sprintf("/e/%s/intentions/%d/retirer-perche", liste.JetonEdition, intention.ID), "Oui, retirer la perche", "/e/"+liste.JetonEdition)
+}
+
+func (app *App) retirerPerche(w http.ResponseWriter, r *http.Request) {
+	if app.tropVite(w, r) {
+		return
+	}
+	liste, intention, ok := app.intentionDuChemin(w, r)
+	if !ok {
+		return
+	}
+	if intention.Tendue() {
+		if _, err := app.db.Exec(`UPDATE intentions SET perche_tendue_le = NULL, perche_quand = NULL, perche_fin = NULL WHERE id = ?`, intention.ID); err != nil {
+			app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
+			return
+		}
+		if !intention.AnnuleeLe.Valid {
+			app.notifierLogistique(intention.ID, "annulation : "+intention.Titre,
+				fmt.Sprintf("« %s » (%s) : je n'y vais finalement pas.\n\n%s/i/%s", intention.Titre, intention.PercheQuandFR(), app.baseURL, intention.Jeton))
+		}
+	}
+	http.Redirect(w, r, fmt.Sprintf("/e/%s?ok=retiree#perche-%d", liste.JetonEdition, intention.ID), http.StatusSeeOther)
 }

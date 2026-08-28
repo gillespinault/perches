@@ -35,13 +35,18 @@ CREATE TABLE intentions (
     lieu         TEXT NOT NULL DEFAULT '',
     url_externe  TEXT,                     -- l'expo, le festival — carte d'aperçu et coïncidences
     jy_vais_de_toute_facon INTEGER NOT NULL DEFAULT 1,
-    -- perche : j'y vais, si ça te dit ; repéré : ça m'a l'air intéressant, sans engagement ni réponse
-    nature       TEXT NOT NULL DEFAULT 'perche' CHECK (nature IN ('perche', 'repere')),
+    -- Tout est repéré (l'événement : ses dates, son lieu). La perche est un geste posé dessus :
+    -- « j'y vais, si ça te dit » — avec ses propres dates, celles de l'hôte (lot F, 2026-08-28).
+    perche_tendue_le TEXT,                 -- NULL = repéré, sans engagement ni réponse
+    perche_quand TEXT,                     -- quand j'y vais (ISO 8601) ; NULL = les dates de l'événement
+    perche_fin   TEXT,                     -- dernier jour où j'y suis, si ça dure
     visibilite   TEXT NOT NULL DEFAULT 'page' CHECK (visibilite IN ('page', 'lien')),
     annulee_le   TEXT,                     -- annulation = logistique : notifiée aux e-mails connus
     cree_le      TEXT NOT NULL DEFAULT (datetime('now')),
     -- une intention est bornée : datée, ou ouverte avec échéance de décision
-    CHECK (quand IS NOT NULL OR echeance_decision IS NOT NULL)
+    CHECK (quand IS NOT NULL OR echeance_decision IS NOT NULL),
+    -- les dates de la perche n'existent que si la perche est tendue
+    CHECK (perche_quand IS NULL OR perche_tendue_le IS NOT NULL)
 );
 
 -- Trois réponses, aucune n'est un refus : « j'aurais bien aimé » dit l'envie, pas l'absence.
