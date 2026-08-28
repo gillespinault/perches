@@ -88,7 +88,7 @@ docker compose up -d        # l'instance écoute sur :8080
 Ou sans Docker : `go build && ./perches`.
 
 Variables d'environnement : `PERCHES_DB` (chemin SQLite), `PERCHES_ADDR`,
-`PERCHES_BASE_URL`, `PERCHES_POLITIQUE` (`ouverte` | `invitation` | `fermee`),
+`PERCHES_BASE_URL`, `PERCHES_POLITIQUE`, `PERCHES_DERRIERE_PROXY` (croire X-Forwarded-For — seulement derrière un reverse proxy) (`ouverte` | `invitation` | `fermee`),
 `PERCHES_SMTP_HOTE/PORT/UTILISATEUR/MDP/DE` (sans SMTP, les courriels sont
 journalisés). Un lien d'invitation (`/?code=…`, à envoyer à la personne) se génère avec `perches -nouveau-code`.
 

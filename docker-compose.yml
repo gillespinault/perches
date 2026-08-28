@@ -3,7 +3,7 @@ services:
   perches:
     build: .
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"  # jamais exposé directement : mettre un reverse proxy devant et PERCHES_DERRIERE_PROXY=1
     volumes:
       - ./data:/data
     environment:

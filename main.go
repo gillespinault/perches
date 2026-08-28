@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 //go:embed templates/*.html
@@ -29,7 +30,13 @@ type App struct {
 	politique string // ouverte | invitation | fermee
 	baseURL   string
 	limiteur  *Limiteur
+	// garde-fous (voir garde.go)
+	derriereProxy bool   // croire X-Forwarded-For
+	synchrone     bool   // courriels envoyés dans la requête (tests)
+	csp           string // Content-Security-Policy calculée au démarrage
 }
+
+func (app *App) handler() http.Handler { return app.protege(app.routes()) }
 
 func main() {
 	nouveauCode := flag.Bool("nouveau-code", false, "génère un code d'invitation et sort")
@@ -41,7 +48,7 @@ func main() {
 	}
 
 	if *nouveauCode {
-		code := jeton(4)
+		code := jeton(8)
 		if _, err := db.Exec(`INSERT INTO codes_invitation (code) VALUES (?)`, code); err != nil {
 			log.Fatalf("code : %v", err)
 		}
@@ -51,19 +58,28 @@ func main() {
 	}
 
 	app := &App{
-		db:        db,
-		mailer:    mailerDepuisEnv(),
-		tpl:       chargerTemplates(),
-		politique: env("PERCHES_POLITIQUE", "ouverte"),
-		baseURL:   env("PERCHES_BASE_URL", "http://localhost:8080"),
-		limiteur:  nouveauLimiteur(),
+		db:            db,
+		mailer:        mailerDepuisEnv(),
+		tpl:           chargerTemplates(),
+		politique:     env("PERCHES_POLITIQUE", "ouverte"),
+		baseURL:       env("PERCHES_BASE_URL", "http://localhost:8080"),
+		limiteur:      nouveauLimiteur(),
+		derriereProxy: os.Getenv("PERCHES_DERRIERE_PROXY") != "",
+		csp:           cspDepuisLayout(),
 	}
 
 	go app.boucleRappels()
 
 	addr := env("PERCHES_ADDR", ":8080")
 	log.Printf("perches écoute sur %s (politique : %s)", addr, app.politique)
-	log.Fatal(http.ListenAndServe(addr, app.routes()))
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           app.handler(),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+	}
+	log.Fatal(srv.ListenAndServe())
 }
 
 func (app *App) routes() http.Handler {

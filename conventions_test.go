@@ -38,6 +38,7 @@ func appTest(t *testing.T) (*App, *MailerTest) {
 	return &App{
 		db: db, mailer: m, tpl: chargerTemplates(),
 		politique: "ouverte", baseURL: "http://perches.test", limiteur: nouveauLimiteur(),
+		synchrone: true, csp: cspDepuisLayout(),
 	}, m
 }
 
@@ -76,7 +77,7 @@ func intentionTest(t *testing.T, app *App, quand, titre, visibilite string, capa
 
 func GET(app *App, chemin string) *httptest.ResponseRecorder {
 	rec := httptest.NewRecorder()
-	app.routes().ServeHTTP(rec, httptest.NewRequest("GET", chemin, nil))
+	app.handler().ServeHTTP(rec, httptest.NewRequest("GET", chemin, nil))
 	return rec
 }
 
@@ -84,7 +85,7 @@ func POST(app *App, chemin string, form url.Values) *httptest.ResponseRecorder {
 	req := httptest.NewRequest("POST", chemin, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
-	app.routes().ServeHTTP(rec, req)
+	app.handler().ServeHTTP(rec, req)
 	return rec
 }
 
@@ -635,7 +636,7 @@ func TestDecision_LeNavigateurDeLHoteRetientSonAtelier(t *testing.T) {
 	req := httptest.NewRequest("GET", "/", nil)
 	req.AddCookie(cookies[0])
 	w := httptest.NewRecorder()
-	app.routes().ServeHTTP(w, req)
+	app.handler().ServeHTTP(w, req)
 	if w.Code != 303 || w.Header().Get("Location") != "/e/edtest" {
 		t.Fatalf("l'accueil mène droit à l'atelier retenu, reçu %d %s", w.Code, w.Header().Get("Location"))
 	}
@@ -693,7 +694,7 @@ func TestDecision_UnHoteOuvreLaPorteAUnAmi(t *testing.T) {
 	rec := POST(app, "/e/edtest/invitations", nil)
 	loc := rec.Header().Get("Location")
 	code := strings.TrimSuffix(strings.TrimPrefix(loc, "/e/edtest?invitation="), "#inviter")
-	if rec.Code != 303 || len(code) != 8 {
+	if rec.Code != 303 || len(code) != 16 {
 		t.Fatalf("redirection inattendue : %d %q", rec.Code, loc)
 	}
 	if !strings.Contains(GET(app, loc).Body.String(), "/?code="+code) {
@@ -785,6 +786,142 @@ func TestSecurite_LEmailNEstPasUneCle(t *testing.T) {
 	POST(app, "/e/edtest/reglages", url.Values{"titre": {"Attaquant"}, "slug": {"test"}, "email": {"v@exemple.be"}})
 	if strings.Contains(GET(app, "/e/edtest").Body.String(), "secret-victime") {
 		t.Fatal("un e-mail non vérifié ne doit jamais donner accès à l'atelier d'une autre liste")
+	}
+}
+
+// ---- lot 1 : robustesse ----
+
+func TestSecurite_CorpsBorne(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	gros := url.Values{"lettre": {strings.Repeat("a", 100_000)}}
+	if rec := POST(app, "/e/edtest", gros); rec.Code != 413 {
+		t.Fatalf("un corps de 100 Ko doit être refusé (413), reçu %d", rec.Code)
+	}
+	long := url.Values{"titre": {strings.Repeat("a", 121)}, "date": {dans(3)}}
+	if rec := POST(app, "/e/edtest/intentions", long); rec.Code != 400 {
+		t.Fatalf("un titre de 121 caractères doit être refusé (400), reçu %d", rec.Code)
+	}
+}
+
+func TestSecurite_LesModificationsSontLimitees(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	form := url.Values{"titre": {"KIKK"}, "date": {dans(3)}}
+	var dernier int
+	for k := 0; k < 16; k++ {
+		dernier = POST(app, fmt.Sprintf("/e/edtest/intentions/%d/maj", i.ID), form).Code
+	}
+	if dernier != 429 {
+		t.Fatalf("la 16e modification en une minute doit être freinée (429), reçu %d", dernier)
+	}
+}
+
+func TestSecurite_UnEmailParPerche(t *testing.T) {
+	app, m := appTest(t)
+	listeTest(t, app)
+	i := intentionTest(t, app, dans(1), "KIKK", "page", nil)
+	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "", "anna@exemple.be")
+	repondreTest(t, app, i.Jeton, "Anna", "peut_etre", "", "anna@exemple.be")
+	repondreTest(t, app, i.Jeton, "Bot", "jy_serai", "", "pas-un-email")
+	app.envoyerRappels()
+	if len(m.Envois) != 1 {
+		t.Fatalf("un seul rappel pour un même e-mail, reçu %d", len(m.Envois))
+	}
+	var n int
+	app.db.QueryRow(`SELECT count(*) FROM reponses WHERE email IS NOT NULL`).Scan(&n)
+	if n != 1 {
+		t.Fatalf("e-mail en double ou implausible non retenu, trouvé %d", n)
+	}
+}
+
+func TestSecurite_PlafondDeReponses(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	for k := 0; k < plafondReponses; k++ {
+		app.db.Exec(`INSERT INTO reponses (intention_id, prenom, statut) VALUES (?, 'x', 'jy_serai')`, i.ID)
+	}
+	if rec := POST(app, "/i/"+i.Jeton+"/reponses", url.Values{"prenom": {"Anna"}, "statut": {"jy_serai"}}); rec.Code != 403 {
+		t.Fatalf("au-delà du plafond, la réponse est refusée avec un mot (403), reçu %d", rec.Code)
+	}
+}
+
+func TestSecurite_CodeExpireOuConsommeUneSeuleFois(t *testing.T) {
+	app, _ := appTest(t)
+	app.politique = "invitation"
+	app.db.Exec(`INSERT INTO codes_invitation (code, cree_le) VALUES ('vieux', datetime('now', '-40 days'))`)
+	form := url.Values{"titre": {"Vieux"}, "email": {"v@exemple.be"}, "code": {"vieux"}}
+	if rec := POST(app, "/listes", form); rec.Code != 403 {
+		t.Fatalf("un code de 40 jours est expiré, reçu %d", rec.Code)
+	}
+	app.db.Exec(`INSERT INTO codes_invitation (code) VALUES ('frais')`)
+	form.Set("code", "frais")
+	if rec := POST(app, "/listes", form); rec.Code != 303 {
+		t.Fatalf("code frais : %d", rec.Code)
+	}
+	var listeID sql.NullInt64
+	app.db.QueryRow(`SELECT liste_id FROM codes_invitation WHERE code = 'frais'`).Scan(&listeID)
+	if !listeID.Valid {
+		t.Fatal("le code consommé doit pointer vers la liste créée")
+	}
+}
+
+func TestSecurite_XForwardedForNestCruQueDerriereUnProxy(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	frappe := func(k int) int {
+		req := httptest.NewRequest("POST", "/e/edtest", strings.NewReader("lettre=x"))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("X-Forwarded-For", fmt.Sprintf("10.0.0.%d", k))
+		rec := httptest.NewRecorder()
+		app.handler().ServeHTTP(rec, req)
+		return rec.Code
+	}
+	var dernier int
+	for k := 0; k < 16; k++ {
+		dernier = frappe(k)
+	}
+	if dernier != 429 {
+		t.Fatalf("sans proxy déclaré, inventer des X-Forwarded-For ne contourne pas le limiteur, reçu %d", dernier)
+	}
+	app.derriereProxy, app.limiteur = true, nouveauLimiteur()
+	for k := 0; k < 16; k++ {
+		dernier = frappe(k)
+	}
+	if dernier != 303 {
+		t.Fatalf("derrière un proxy, chaque adresse transmise compte pour elle-même, reçu %d", dernier)
+	}
+}
+
+func TestSecurite_URLExterneFiltree(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	POST(app, "/e/edtest/intentions", url.Values{"titre": {"Expo"}, "date": {dans(3)}, "url_externe": {"javascript:alert(1)"}})
+	var u sql.NullString
+	app.db.QueryRow(`SELECT url_externe FROM intentions WHERE titre = 'Expo'`).Scan(&u)
+	if u.Valid {
+		t.Fatalf("une URL qui n'est pas http(s) est ignorée, trouvé %q", u.String)
+	}
+}
+
+func TestSecurite_EnTetes(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	h := GET(app, "/l/test").Header()
+	if h.Get("X-Content-Type-Options") != "nosniff" || h.Get("X-Frame-Options") != "DENY" || h.Get("Referrer-Policy") != "same-origin" {
+		t.Fatal("en-têtes de sécurité absents")
+	}
+	if csp := h.Get("Content-Security-Policy"); !strings.Contains(csp, "'sha256-") || strings.Contains(csp, "unsafe") {
+		t.Fatalf("la CSP autorise le script par empreinte, rien d'autre : %q", csp)
+	}
+	req := httptest.NewRequest("POST", "/oublier", nil)
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	rec := httptest.NewRecorder()
+	app.handler().ServeHTTP(rec, req)
+	if rec.Code != 403 {
+		t.Fatalf("« oublier » depuis un autre site est refusé, reçu %d", rec.Code)
 	}
 }
 

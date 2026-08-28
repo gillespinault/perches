@@ -1,9 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -19,19 +19,8 @@ func (app *App) rendre(w http.ResponseWriter, nom string, data any) {
 	}
 }
 
-func ipDe(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		return strings.TrimSpace(strings.SplitN(xff, ",", 2)[0])
-	}
-	hote, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return hote
-}
-
 func (app *App) tropVite(w http.ResponseWriter, r *http.Request) bool {
-	if app.limiteur.Autorise(ipDe(r)) {
+	if app.limiteur.Autorise(app.ipDe(r)) {
 		return false
 	}
 	http.Error(w, "Doucement — réessaie dans une minute.", http.StatusTooManyRequests)
@@ -92,6 +81,10 @@ func (app *App) retenirAtelier(w http.ResponseWriter, jeton string) {
 }
 
 func (app *App) oublierAtelier(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
+		http.Error(w, "Ce geste se fait depuis Perches.", http.StatusForbidden)
+		return
+	}
 	http.SetCookie(w, &http.Cookie{Name: "atelier", Value: "", Path: "/", MaxAge: -1})
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
@@ -109,35 +102,51 @@ func (app *App) creerListe(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Il faut un titre (80 caractères au plus).", http.StatusBadRequest)
 		return
 	}
-	email := strings.TrimSpace(r.FormValue("email"))
-	if !strings.Contains(email, "@") {
+	email := emailPlausible(r.FormValue("email"))
+	if email == "" {
 		http.Error(w, "Il faut un e-mail : c'est par lui que tu retrouves ton atelier.", http.StatusBadRequest)
 		return
 	}
-	slug := app.slugLibre(slugDe(titre))
-	var codeUtilise string
-	if app.politique == "invitation" {
-		code := strings.TrimSpace(r.FormValue("code"))
-		var n int
-		app.db.QueryRow(`SELECT count(*) FROM codes_invitation WHERE code = ? AND utilise_le IS NULL`, code).Scan(&n)
-		if n == 0 {
-			http.Error(w, "Cette instance fonctionne sur code d'invitation.", http.StatusForbidden)
-			return
-		}
-		codeUtilise = code
-	}
-	je := jeton(16)
-	res, err := app.db.Exec(`INSERT INTO listes (slug, jeton_edition, titre, lettre, etat, email)
-		VALUES (?,?,?,?,?,?)`,
-		slug, je, titre, "", "", nullSi(email))
+	// Une transaction : le code est consommé d'abord (une seule liste par code, même en
+	// concurrence), puis l'adresse est essayée jusqu'à en trouver une libre.
+	tx, err := app.db.Begin()
 	if err != nil {
 		http.Error(w, "erreur interne", http.StatusInternalServerError)
 		return
 	}
+	defer tx.Rollback()
+	code := strings.TrimSpace(r.FormValue("code"))
+	if app.politique == "invitation" {
+		res, err := tx.Exec(`UPDATE codes_invitation SET utilise_le = datetime('now')
+			WHERE code = ? AND utilise_le IS NULL AND cree_le > datetime('now', '-30 days')`, code)
+		if n, _ := res.RowsAffected(); err != nil || n != 1 {
+			http.Error(w, "Ce lien d'invitation a déjà servi, ou n'est plus valable — redemande-en un à la personne qui te l'a envoyé.", http.StatusForbidden)
+			return
+		}
+	}
+	je := jeton(16)
+	base := slugDe(titre)
+	slug := base
+	var res sql.Result
+	for n := 2; ; n++ {
+		res, err = tx.Exec(`INSERT INTO listes (slug, jeton_edition, titre, lettre, etat, email) VALUES (?,?,?,'','',?)`,
+			slug, je, titre, email)
+		if err == nil {
+			break
+		}
+		if !strings.Contains(err.Error(), "UNIQUE") || n > 100 {
+			http.Error(w, "erreur interne", http.StatusInternalServerError)
+			return
+		}
+		slug = fmt.Sprintf("%s-%d", base, n)
+	}
 	listeID, _ := res.LastInsertId()
-	if codeUtilise != "" {
-		app.db.Exec(`UPDATE codes_invitation SET utilise_le = datetime('now'), liste_id = ? WHERE code = ?`,
-			listeID, codeUtilise)
+	if app.politique == "invitation" {
+		tx.Exec(`UPDATE codes_invitation SET liste_id = ? WHERE code = ?`, listeID, code)
+	}
+	if err := tx.Commit(); err != nil {
+		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		return
 	}
 	if email != "" {
 		corps := fmt.Sprintf("Ta liste « %s » est ouverte.\n\nTa page, à partager : %s/l/%s\nTon atelier (ta clé — garde ce lien pour toi) : %s/e/%s\n",
@@ -164,11 +173,13 @@ func (app *App) recupererLien(w http.ResponseWriter, r *http.Request) {
 			}
 			rows.Close()
 		}
-		for _, l := range listes {
-			corps := fmt.Sprintf("Ta liste « %s » :\n\nTa page, à partager : %s/l/%s\nTon atelier (ta clé — garde ce lien pour toi) : %s/e/%s\n",
-				l.Titre, app.baseURL, l.Slug, app.baseURL, l.JetonEdition)
-			app.envoyer(email, "Perches — ton atelier", corps, "recuperation_lien", 0, l.ID)
-		}
+		app.enFond(func() {
+			for _, l := range listes {
+				corps := fmt.Sprintf("Ta liste « %s » :\n\nTa page, à partager : %s/l/%s\nTon atelier (ta clé — garde ce lien pour toi) : %s/e/%s\n",
+					l.Titre, app.baseURL, l.Slug, app.baseURL, l.JetonEdition)
+				app.envoyer(email, "Perches — ton atelier", corps, "recuperation_lien", 0, l.ID)
+			}
+		})
 	}
 	app.rendre(w, "message.html", map[string]any{
 		"TitrePage": "Perches",
@@ -287,7 +298,7 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 	prenom := strings.TrimSpace(r.FormValue("prenom"))
 	statut := r.FormValue("statut")
 	mot := strings.TrimSpace(r.FormValue("mot"))
-	email := strings.TrimSpace(r.FormValue("email"))
+	email := emailPlausible(r.FormValue("email"))
 	if prenom == "" || len([]rune(prenom)) > 60 {
 		http.Error(w, "Un prénom suffit — mais il en faut un.", http.StatusBadRequest)
 		return
@@ -306,6 +317,19 @@ func (app *App) repondre(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	visible := r.FormValue("prenom_visible") != ""
+	var n int
+	app.db.QueryRow(`SELECT count(*) FROM reponses WHERE intention_id = ?`, intention.ID).Scan(&n)
+	if n >= plafondReponses {
+		http.Error(w, "Cette perche a reçu plus de réponses qu'elle n'en attendait — écris directement à la personne.", http.StatusForbidden)
+		return
+	}
+	if email != "" {
+		// Un e-mail ne s'inscrit qu'une fois par perche : un rappel par personne, pas par clic.
+		app.db.QueryRow(`SELECT count(*) FROM reponses WHERE intention_id = ? AND email = ?`, intention.ID, email).Scan(&n)
+		if n > 0 {
+			email = ""
+		}
+	}
 	if _, err := app.db.Exec(`INSERT INTO reponses (intention_id, prenom, statut, mot, prenom_visible, email)
 		VALUES (?,?,?,?,?,?)`, intention.ID, prenom, statut, mot, visible, nullSi(email)); err != nil {
 		http.Error(w, "erreur interne", http.StatusInternalServerError)
@@ -373,7 +397,7 @@ func (app *App) creerInvitation(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	code := jeton(4)
+	code := jeton(8)
 	if _, err := app.db.Exec(`INSERT INTO codes_invitation (code) VALUES (?)`, code); err != nil {
 		http.Error(w, "erreur interne", http.StatusInternalServerError)
 		return
@@ -382,18 +406,31 @@ func (app *App) creerInvitation(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *App) majListe(w http.ResponseWriter, r *http.Request) {
+	if app.tropVite(w, r) {
+		return
+	}
 	liste, err := app.listeParJetonEdition(r.PathValue("jeton"))
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	app.db.Exec(`UPDATE listes SET lettre = ?, etat = ? WHERE id = ?`,
-		r.FormValue("lettre"), strings.TrimSpace(r.FormValue("etat")), liste.ID)
+	lettre, etat := r.FormValue("lettre"), strings.TrimSpace(r.FormValue("etat"))
+	if !borne(lettre, 5000) || !borne(etat, 120) {
+		http.Error(w, "L'introduction tient en 5 000 caractères, la ligne « en ce moment » en 120.", http.StatusBadRequest)
+		return
+	}
+	if _, err := app.db.Exec(`UPDATE listes SET lettre = ?, etat = ? WHERE id = ?`, lettre, etat, liste.ID); err != nil {
+		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		return
+	}
 	http.Redirect(w, r, "/e/"+liste.JetonEdition, http.StatusSeeOther)
 }
 
 // reglages : titre, adresse, e-mail — ce qui change rarement, et se relit en pied d'atelier.
 func (app *App) reglages(w http.ResponseWriter, r *http.Request) {
+	if app.tropVite(w, r) {
+		return
+	}
 	liste, err := app.listeParJetonEdition(r.PathValue("jeton"))
 	if err != nil {
 		http.NotFound(w, r)
@@ -401,8 +438,8 @@ func (app *App) reglages(w http.ResponseWriter, r *http.Request) {
 	}
 	titre := strings.TrimSpace(r.FormValue("titre"))
 	slug := strings.ToLower(strings.TrimSpace(r.FormValue("slug")))
-	email := strings.TrimSpace(r.FormValue("email"))
-	if titre == "" || len([]rune(titre)) > 80 || !slugValide.MatchString(slug) || !strings.Contains(email, "@") {
+	email := emailPlausible(r.FormValue("email"))
+	if titre == "" || len([]rune(titre)) > 80 || !slugValide.MatchString(slug) || email == "" {
 		http.Error(w, "Il faut un titre, une adresse en minuscules (lettres, chiffres, tirets) et un e-mail.", http.StatusBadRequest)
 		return
 	}
@@ -443,6 +480,10 @@ func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Il faut un titre.", http.StatusBadRequest)
 		return
 	}
+	if msg := champsIntentionTropLongs(r); msg != "" {
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
 	quand, err := quandDepuisForm(r)
 	if err != nil {
 		http.Error(w, "Il faut une date (la variante « à fixer » viendra plus tard).", http.StatusBadRequest)
@@ -461,7 +502,7 @@ func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
 		(liste_id, jeton, titre, description, quand, lieu, url_externe, capacite, jy_vais_de_toute_facon, visibilite)
 		VALUES (?,?,?,?,?,?,?,?,?,?)`,
 		liste.ID, jeton(12), titre, r.FormValue("description"), quand,
-		strings.TrimSpace(r.FormValue("lieu")), nullSi(strings.TrimSpace(r.FormValue("url_externe"))),
+		strings.TrimSpace(r.FormValue("lieu")), nullSi(urlPlausible(r.FormValue("url_externe"))),
 		capacite, jyVais, visibilite)
 	if err != nil {
 		http.Error(w, "erreur interne", http.StatusInternalServerError)
@@ -508,18 +549,41 @@ func (app *App) notifierLogistique(intentionID int64, sujet, message string) {
 		}
 	}
 	corps := message + "\n\nRien ne t'est demandé."
-	for _, d := range dests {
-		app.envoyer(d.email, "Perches — "+sujet, corps, "logistique", d.id, 0)
+	app.enFond(func() {
+		for _, d := range dests {
+			app.envoyer(d.email, "Perches — "+sujet, corps, "logistique", d.id, 0)
+		}
+	})
+}
+
+const plafondReponses = 200
+
+// champsIntentionTropLongs : bornes serveur des champs libres d'une perche.
+func champsIntentionTropLongs(r *http.Request) string {
+	switch {
+	case !borne(r.FormValue("titre"), 120):
+		return "Le « quoi » tient en 120 caractères."
+	case !borne(r.FormValue("lieu"), 120):
+		return "Le lieu tient en 120 caractères."
+	case !borne(r.FormValue("description"), 5000):
+		return "Les quelques mots tiennent en 5 000 caractères."
 	}
+	return ""
 }
 
 func (app *App) annulerIntention(w http.ResponseWriter, r *http.Request) {
+	if app.tropVite(w, r) {
+		return
+	}
 	liste, intention, ok := app.intentionDuChemin(w, r)
 	if !ok {
 		return
 	}
 	if !intention.AnnuleeLe.Valid {
-		app.db.Exec(`UPDATE intentions SET annulee_le = datetime('now') WHERE id = ?`, intention.ID)
+		if _, err := app.db.Exec(`UPDATE intentions SET annulee_le = datetime('now') WHERE id = ?`, intention.ID); err != nil {
+			http.Error(w, "erreur interne", http.StatusInternalServerError)
+			return
+		}
 		app.notifierLogistique(intention.ID, "annulation : "+intention.Titre,
 			fmt.Sprintf("L'intention « %s » (%s) est annulée.", intention.Titre, quandFR(intention.Quand)))
 	}
@@ -527,8 +591,15 @@ func (app *App) annulerIntention(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *App) majIntention(w http.ResponseWriter, r *http.Request) {
+	if app.tropVite(w, r) {
+		return
+	}
 	liste, intention, ok := app.intentionDuChemin(w, r)
 	if !ok {
+		return
+	}
+	if msg := champsIntentionTropLongs(r); msg != "" {
+		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 	quand, err := quandDepuisForm(r)
@@ -553,10 +624,13 @@ func (app *App) majIntention(w http.ResponseWriter, r *http.Request) {
 	jyVais := r.FormValue("jy_vais") != "0"
 	// Tout se corrige ; seuls la date et le lieu — la logistique — valent un mot aux invités.
 	change := quand != intention.Quand.String || lieu != intention.Lieu
-	app.db.Exec(`UPDATE intentions SET titre = ?, description = ?, quand = ?, lieu = ?, url_externe = ?,
+	if _, err := app.db.Exec(`UPDATE intentions SET titre = ?, description = ?, quand = ?, lieu = ?, url_externe = ?,
 		capacite = ?, visibilite = ?, jy_vais_de_toute_facon = ? WHERE id = ?`,
-		titre, r.FormValue("description"), quand, lieu, nullSi(strings.TrimSpace(r.FormValue("url_externe"))),
-		capacite, visibilite, jyVais, intention.ID)
+		titre, r.FormValue("description"), quand, lieu, nullSi(urlPlausible(r.FormValue("url_externe"))),
+		capacite, visibilite, jyVais, intention.ID); err != nil {
+		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		return
+	}
 	intention.Titre = titre
 	if change && !intention.AnnuleeLe.Valid {
 		var q = quand
@@ -582,7 +656,10 @@ func (app *App) effacerReponse(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	app.db.Exec(`DELETE FROM reponses WHERE id = ?
-		AND intention_id IN (SELECT id FROM intentions WHERE liste_id = ?)`, id, liste.ID)
+	if _, err := app.db.Exec(`DELETE FROM reponses WHERE id = ?
+		AND intention_id IN (SELECT id FROM intentions WHERE liste_id = ?)`, id, liste.ID); err != nil {
+		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		return
+	}
 	http.Redirect(w, r, "/e/"+liste.JetonEdition, http.StatusSeeOther)
 }

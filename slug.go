@@ -1,9 +1,6 @@
 package main
 
-import (
-	"fmt"
-	"strings"
-)
+import "strings"
 
 // slugDe dérive une adresse de page d'un titre : « Les perches de Léa » → « lea ».
 // Accents retirés, minuscules, tirets ; le préfixe « les perches de » tombe quand
@@ -52,19 +49,6 @@ func sansPrefixe(t string) string {
 		}
 	}
 	return t
-}
-
-// slugLibre ajoute -2, -3… tant que l'adresse est prise.
-func (app *App) slugLibre(base string) string {
-	slug := base
-	for n := 2; ; n++ {
-		var k int
-		app.db.QueryRow(`SELECT count(*) FROM listes WHERE slug = ?`, slug).Scan(&k)
-		if k == 0 {
-			return slug
-		}
-		slug = fmt.Sprintf("%s-%d", base, n)
-	}
 }
 
 var sansAccent = map[rune]rune{
