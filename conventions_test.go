@@ -5,11 +5,13 @@ package main
 // est une PR qui demande à changer le produit.
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -1518,5 +1520,36 @@ func TestDecision_BarreDHoteSurLesPagesPubliques(t *testing.T) {
 	if !strings.Contains(edition, `<details open>
 <summary>Modifier l'événement</summary>`) {
 		t.Fatal("l'édition ouvre le formulaire demandé")
+	}
+}
+
+func TestDecision_CarteDePartageParListeEtParEvenement(t *testing.T) {
+	// L'image d'aperçu est dessinée pour chaque liste et chaque événement — 1200 × 630, PNG —
+	// et son adresse porte une empreinte du contenu, pour que les messageries la rafraîchissent.
+	app, _ := appTest(t)
+	listeTest(t, app)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
+	for _, chemin := range []string{"/l/test.png", "/i/" + i.Jeton + ".png"} {
+		rec := GET(app, chemin)
+		if rec.Code != 200 || rec.Header().Get("Content-Type") != "image/png" {
+			t.Fatalf("%s : %d %s", chemin, rec.Code, rec.Header().Get("Content-Type"))
+		}
+		img, err := png.Decode(bytes.NewReader(rec.Body.Bytes()))
+		if err != nil || img.Bounds().Dx() != 1200 || img.Bounds().Dy() != 630 {
+			t.Fatalf("%s : image invalide (%v)", chemin, err)
+		}
+	}
+	page := GET(app, "/l/test").Body.String()
+	if !strings.Contains(page, `property="og:image" content="http://perches.test/l/test.png?v=`) || !strings.Contains(page, `name="twitter:card"`) {
+		t.Fatal("la page déclare sa carte, avec une empreinte, et la carte Twitter")
+	}
+	avant := regexp.MustCompile(`og:image" content="([^"]+)"`).FindStringSubmatch(GET(app, "/i/"+i.Jeton).Body.String())[1]
+	POST(app, fmt.Sprintf("/e/edtest/intentions/%d/maj", i.ID), url.Values{"titre": {"KIKK 2026"}, "date": {dans(3)}})
+	apres := regexp.MustCompile(`og:image" content="([^"]+)"`).FindStringSubmatch(GET(app, "/i/"+i.Jeton).Body.String())[1]
+	if avant == apres {
+		t.Fatal("changer le titre change l'adresse de la carte")
+	}
+	if rec := GET(app, "/l/inconnue.png"); rec.Code != 404 {
+		t.Fatalf("carte d'une liste inconnue : %d", rec.Code)
 	}
 }

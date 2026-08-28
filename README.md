@@ -93,7 +93,8 @@ besoin que d'un navigateur. Une instance peut s'éteindre sans rien faire perdre
 personne.
 
 Une instance = un petit serveur : **Go, rendu côté serveur, SQLite, un conteneur,
-presque pas de JavaScript** (un bouton « copier » et l'aperçu de l'adresse, en
+presque pas de JavaScript** ; les cartes de partage (l'image sous un lien dans WhatsApp,
+Signal, Messages…) sont dessinées par le serveur, une par liste et par événement (un bouton « copier » et l'aperçu de l'adresse, en
 amélioration progressive). Identité de l'hôte = lien secret d'édition, que son e-mail
 (demandé à l'ouverture) permet de retrouver ; cookie côté hôte seulement. Politique
 d'instance au choix : création de listes ouverte, sur invitation (un hôte peut inviter

@@ -235,6 +235,8 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 		format, slug = "ics", strings.TrimSuffix(slug, ".ics")
 	case strings.HasSuffix(slug, ".json"):
 		format, slug = "json", strings.TrimSuffix(slug, ".json")
+	case strings.HasSuffix(slug, ".png"):
+		format, slug = "png", strings.TrimSuffix(slug, ".png")
 	}
 	liste, err := app.listeParSlug(strings.ToLower(slug))
 	if err != nil {
@@ -258,11 +260,19 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 			intentions = append(intentions, i)
 		}
 	}
+	nbTendues := 0
+	for _, i := range intentions {
+		if i.Tendue() {
+			nbTendues++
+		}
+	}
 	switch format {
 	case "ics":
 		servirICS(w, liste.Titre, intentions, app.baseURL)
 	case "json":
 		servirJSONPublic(w, liste, intentions)
+	case "png":
+		app.servirCarte(w, r, app.carteDeListe(liste, nbTendues))
 	default:
 		merci, percheMerci := merciDe(r), r.URL.Query().Get("perche")
 		vues, nbPerches := []VuePerche{}, 0
@@ -280,7 +290,8 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 		}
 		app.rendre(w, r, "liste.html", map[string]any{
 			"TitrePage": liste.Titre,
-			"OG":        app.og(liste.Titre, descriptionOG(sansMarkdown(liste.Lettre), nbPerches), "/l/"+liste.Slug),
+			"OG": app.og(liste.Titre, descriptionOG(sansMarkdown(liste.Lettre), nbPerches), "/l/"+liste.Slug,
+				"/l/"+liste.Slug+".png?v="+empreinteCarte(liste.Titre, liste.Lettre, fmt.Sprint(nbPerches))),
 			"Alternate": app.baseURL + "/l/" + liste.Slug + ".json",
 			"Liste":     liste,
 			"Perches":   vues,
@@ -317,9 +328,23 @@ func couper(s string, n int) string {
 	return strings.TrimRight(string(r[:n]), " ,;:") + "…"
 }
 
-func (app *App) og(titre, description, chemin string) map[string]string {
+func (app *App) og(titre, description, chemin, image string) map[string]string {
 	return map[string]string{"Titre": titre, "Description": description,
-		"URL": app.baseURL + chemin, "Image": app.baseURL + "/static/carte.png"}
+		"URL": app.baseURL + chemin, "Image": app.baseURL + image}
+}
+
+// servirCarte : l'image d'aperçu, dessinée à la demande, mise en cache une heure par les
+// messageries et les navigateurs (l'adresse change avec le contenu, voir empreinteCarte).
+func (app *App) servirCarte(w http.ResponseWriter, r *http.Request, c Carte) {
+	b, err := dessinerCarte(c)
+	if err != nil {
+		log.Printf("carte : %v", err)
+		http.Error(w, "carte indisponible", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.Write(b)
 }
 
 // phraseAuraitAime : « Anna aurait bien aimé. », « Anna et Marc auraient bien aimé. »
@@ -352,16 +377,23 @@ func phrasePresences(visibles []string, discrets int) string {
 func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 	j := r.PathValue("jeton")
 	format := ""
-	if strings.HasSuffix(j, ".ics") {
+	switch {
+	case strings.HasSuffix(j, ".ics"):
 		format, j = "ics", strings.TrimSuffix(j, ".ics")
+	case strings.HasSuffix(j, ".png"):
+		format, j = "png", strings.TrimSuffix(j, ".png")
 	}
 	intention, liste, err := app.intentionParJeton(j)
 	if err != nil {
 		app.introuvable(w, r)
 		return
 	}
-	if format == "ics" {
+	switch format {
+	case "ics":
 		servirICS(w, intention.Titre, []Intention{*intention}, app.baseURL)
+		return
+	case "png":
+		app.servirCarte(w, r, app.carteDIntention(intention))
 		return
 	}
 	v := app.vuePerche(intention, liste, merciDe(r), false)
@@ -374,8 +406,9 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 		ogDesc += " — " + intention.Lieu
 	}
 	app.rendre(w, r, "intention.html", map[string]any{
-		"TitrePage":     intention.Titre,
-		"OG":            app.og(intention.Titre, ogDesc, "/i/"+intention.Jeton),
+		"TitrePage": intention.Titre,
+		"OG": app.og(intention.Titre, ogDesc, "/i/"+intention.Jeton,
+			"/i/"+intention.Jeton+".png?v="+empreinteCarte(intention.Titre, intention.Quand.String, intention.Fin.String, intention.Lieu, intention.PercheQuand.String, intention.PercheTendueLe.String)),
 		"Liste":         liste,
 		"V":             v,
 		"LienSeulement": intention.Visibilite == "lien",
