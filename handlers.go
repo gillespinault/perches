@@ -590,6 +590,18 @@ func datesDepuisForm(r *http.Request, prefixe string) (quand string, fin any, er
 
 func quandDepuisForm(r *http.Request) (string, any, error) { return datesDepuisForm(r, "") }
 
+// datesPropres : les dates de la perche ne sont enregistrées que si elles diffèrent de celles de
+// l'événement — « tout du long » se dit par leur absence, et suit l'événement s'il bouge.
+// Des dates saisies (ou migrées) restent où elles sont.
+func datesPropres(pq string, pf any, quand string, fin any) (any, any) {
+	pfTexte, _ := pf.(string)
+	finTexte, _ := fin.(string)
+	if pq == quand && pfTexte == finTexte {
+		return nil, nil
+	}
+	return pq, pf
+}
+
 // datesPercheDepuisForm : quand l'hôte y va — ses dates si le formulaire en donne, sinon
 // celles de l'événement.
 func datesPercheDepuisForm(r *http.Request, quand string, fin any) (string, any, error) {
@@ -634,7 +646,8 @@ func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
 			app.erreur(w, r, http.StatusBadRequest, "Quand j'y vais : il faut une date valide, et une fin qui suit le début.")
 			return
 		}
-		tendueLe, percheQuand, percheFin = "now", pq, pf
+		tendueLe = "now"
+		percheQuand, percheFin = datesPropres(pq, pf, quand, fin)
 	}
 	jyVais := true // décision 2026-08-28 : « j'y vais de toute façon », sans option
 	res, err := app.db.Exec(`INSERT INTO intentions
@@ -771,11 +784,7 @@ func (app *App) majIntention(w http.ResponseWriter, r *http.Request) {
 		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
-	// Une perche tendue « tout du long » suit les dates de l'événement quand elles bougent.
-	if intention.Tendue() && intention.PercheAuxDatesDeLEvenement() {
-		app.db.Exec(`UPDATE intentions SET perche_quand = ?, perche_fin = ? WHERE id = ?`, quand, fin, intention.ID)
-		intention.PercheQuand, intention.PercheFin = sqlString(quand), sqlString(finTexte)
-	}
+	// Une perche tendue « tout du long » (sans dates propres) suit d'elle-même les dates de l'événement.
 	intention.Titre, intention.Quand, intention.Fin = titre, sqlString(quand), sqlString(finTexte)
 	if change && intention.Tendue() && !intention.AnnuleeLe.Valid {
 		msg := fmt.Sprintf("« %s » change : %s", intention.Titre, intention.PercheQuandFR())

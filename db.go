@@ -68,8 +68,10 @@ func migrer(db *sql.DB) error {
 		}
 	}
 	// 2026-08-28 (lot F) : tout est repéré, la perche est un geste posé dessus — perche_tendue_le,
-	// perche_quand, perche_fin remplacent nature (lot E, éphémère). Les perches existantes
-	// gardent les dates de leur événement. Les CHECK ne se posent pas par ALTER : le code les tient.
+	// perche_quand, perche_fin remplacent nature (lot E, éphémère). Les perches existantes reçoivent
+	// des dates propres égales à celles de leur événement — ce sont en réalité les dates de l'hôte
+	// (Arles), et elles ne bougeront pas si l'événement est corrigé ensuite. Les CHECK ne se posent
+	// pas par ALTER : le code les tient.
 	db.QueryRow(`SELECT count(*) FROM pragma_table_info('intentions') WHERE name = 'perche_tendue_le'`).Scan(&n)
 	if n == 0 {
 		for _, col := range []string{"perche_tendue_le", "perche_quand", "perche_fin"} {

@@ -1440,3 +1440,28 @@ func TestDecision_PercheAvecSesPropresDates(t *testing.T) {
 		t.Fatalf("changer quand j'y vais : envois %d, perche %q, événement %q", len(m.Envois), i2.PercheQuand.String, i2.Quand.String)
 	}
 }
+
+func TestDecision_ToutDuLongSuitLEvenement(t *testing.T) {
+	app, _ := appTest(t)
+	listeTest(t, app)
+	// tendue sans dates propres : suit l'événement quand il bouge
+	POST(app, "/e/edtest/intentions", url.Values{"titre": {"Marché"}, "date": {dans(3)}, "tendre": {"1"}})
+	var id int64
+	app.db.QueryRow(`SELECT id FROM intentions WHERE titre = 'Marché'`).Scan(&id)
+	i, _ := app.intentionDeListe(1, id)
+	if i.PercheQuand.Valid || !i.PercheAuxDatesDeLEvenement() {
+		t.Fatalf("tout du long = pas de dates propres : %+v", i)
+	}
+	POST(app, fmt.Sprintf("/e/edtest/intentions/%d/maj", id), url.Values{"titre": {"Marché"}, "date": {dans(4)}})
+	if q, _ := (func() (sql.NullString, sql.NullString) { i, _ := app.intentionDeListe(1, id); return i.DatesPerche() })(); q.String != dans(4) {
+		t.Fatalf("la perche tout du long suit l'événement : %q", q.String)
+	}
+	// des dates propres (migrées ou saisies) restent quand l'événement est corrigé — le cas d'Arles
+	app.db.Exec(`UPDATE intentions SET perche_quand = ?, perche_fin = ? WHERE id = ?`, dans(4), dans(6), id)
+	POST(app, fmt.Sprintf("/e/edtest/intentions/%d/maj", id), url.Values{"titre": {"Marché"}, "date": {dans(1)}, "fin": {dans(9)}})
+	i, _ = app.intentionDeListe(1, id)
+	q, f := i.DatesPerche()
+	if q.String != dans(4) || f.String != dans(6) || i.Quand.String != dans(1) || i.PercheAuxDatesDeLEvenement() {
+		t.Fatalf("des dates propres ne bougent pas : perche %q→%q, événement %q→%q", q.String, f.String, i.Quand.String, i.Fin.String)
+	}
+}

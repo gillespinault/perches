@@ -160,6 +160,8 @@ func (i *Intention) PercheQuandFR() string {
 }
 
 // PercheAuxDatesDeLEvenement : vrai si l'hôte y va tout du long — la page ne répète pas la date.
+// Vrai aussi si des dates propres coïncident avec celles de l'événement (perche migrée, ou saisie
+// telle quelle) : elles restent alors fixes si l'événement bouge, mais la page dit la même chose.
 func (i *Intention) PercheAuxDatesDeLEvenement() bool {
 	q, f := i.DatesPerche()
 	return q.String == i.Quand.String && f.String == i.Fin.String

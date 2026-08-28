@@ -155,8 +155,9 @@ func (app *App) tendrePerche(w http.ResponseWriter, r *http.Request) {
 	finTexte, _ := fin.(string)
 	dejaQuand, dejaFin := intention.DatesPerche()
 	change := intention.Tendue() && (quand != dejaQuand.String || finTexte != dejaFin.String)
+	pq, pf := datesPropres(quand, fin, intention.Quand.String, finEvenement)
 	if _, err := app.db.Exec(`UPDATE intentions SET perche_tendue_le = coalesce(perche_tendue_le, datetime('now')),
-		perche_quand = ?, perche_fin = ? WHERE id = ?`, quand, fin, intention.ID); err != nil {
+		perche_quand = ?, perche_fin = ? WHERE id = ?`, pq, pf, intention.ID); err != nil {
 		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
