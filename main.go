@@ -33,6 +33,7 @@ type App struct {
 	// garde-fous (voir garde.go)
 	derriereProxy bool   // croire X-Forwarded-For
 	synchrone     bool   // courriels envoyés dans la requête (tests)
+	imagesLocales bool   // accepter les adresses internes pour l'image du site (tests)
 	csp           string // Content-Security-Policy calculée au démarrage
 }
 
@@ -90,6 +91,7 @@ func (app *App) routes() http.Handler {
 	mux.HandleFunc("POST /oublier", app.oublierAtelier)
 	mux.HandleFunc("GET /l/{slug}", app.voirListe)
 	mux.HandleFunc("GET /i/{jeton}", app.voirIntention)
+	mux.HandleFunc("GET /i/{jeton}/image.jpg", app.servirImage)
 	mux.HandleFunc("POST /i/{jeton}/reponses", app.repondre)
 	mux.HandleFunc("GET /e/{jeton}", app.editerListe)
 	mux.HandleFunc("POST /e/{jeton}", app.majListe)
@@ -98,6 +100,7 @@ func (app *App) routes() http.Handler {
 	mux.HandleFunc("POST /e/{jeton}/intentions/{id}/annuler", app.annulerIntention)
 	mux.HandleFunc("POST /e/{jeton}/intentions/{id}/maj", app.majIntention)
 	mux.HandleFunc("POST /e/{jeton}/intentions/{id}/perche", app.tendrePerche)
+	mux.HandleFunc("POST /e/{jeton}/intentions/{id}/image", app.imageDuSite)
 	mux.HandleFunc("GET /e/{jeton}/intentions/{id}/retirer-perche", app.confirmerRetraitPerche)
 	mux.HandleFunc("POST /e/{jeton}/intentions/{id}/retirer-perche", app.retirerPerche)
 	mux.HandleFunc("POST /e/{jeton}/reponses/{id}/effacer", app.effacerReponse)

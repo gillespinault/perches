@@ -34,6 +34,9 @@ CREATE TABLE intentions (
     echeance_decision TEXT,                -- intention ouverte : sans échéance, elle recréerait l'attente
     lieu         TEXT NOT NULL DEFAULT '',
     url_externe  TEXT,                     -- l'expo, le festival — carte d'aperçu et coïncidences
+    image        BLOB,                     -- copie réduite de l'image que le site du lien déclare (og:image)
+    image_source TEXT,                     -- d'où elle vient
+    image_refusee INTEGER NOT NULL DEFAULT 0, -- l'hôte a dit « sans image » : on n'en cherche plus
     jy_vais_de_toute_facon INTEGER NOT NULL DEFAULT 1,
     -- Tout est repéré (l'événement : ses dates, son lieu). La perche est un geste posé dessus :
     -- « j'y vais, si ça te dit » — avec ses propres dates, celles de l'hôte (lot F, 2026-08-28).

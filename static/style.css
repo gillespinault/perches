@@ -124,6 +124,11 @@ a { color: var(--bois); text-decoration-thickness: 1px; text-underline-offset: .
 .voix { margin: 1.4rem 0; padding: .2rem 0 .2rem 1rem; border-left: 2px solid var(--trait); color: var(--doux); white-space: pre-line; }
 .voix a { white-space: nowrap; }
 
+/* l'image du site, en copie servie d'ici */
+.illustration { display: block; width: 100%; max-height: 16rem; object-fit: cover; border-radius: 6px; margin: 0 0 .9rem; }
+.image-site { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin: .3rem 0 .6rem; font-family: var(--sans); }
+.image-site img { width: 4.5rem; height: 3rem; object-fit: cover; border-radius: 4px; }
+
 /* la perche : une ligne de faits, une phrase d'engagement */
 .meta { font-size: .92rem; color: var(--doux); margin: 0 0 1rem; }
 .meta b { color: var(--encre); font-weight: 600; }

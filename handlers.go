@@ -235,8 +235,8 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 		format, slug = "ics", strings.TrimSuffix(slug, ".ics")
 	case strings.HasSuffix(slug, ".json"):
 		format, slug = "json", strings.TrimSuffix(slug, ".json")
-	case strings.HasSuffix(slug, ".png"):
-		format, slug = "png", strings.TrimSuffix(slug, ".png")
+	case strings.HasSuffix(slug, ".jpg"):
+		format, slug = "jpg", strings.TrimSuffix(slug, ".jpg")
 	}
 	liste, err := app.listeParSlug(strings.ToLower(slug))
 	if err != nil {
@@ -271,7 +271,7 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 		servirICS(w, liste.Titre, intentions, app.baseURL)
 	case "json":
 		servirJSONPublic(w, liste, intentions)
-	case "png":
+	case "jpg":
 		app.servirCarte(w, r, app.carteDeListe(liste, nbTendues))
 	default:
 		merci, percheMerci := merciDe(r), r.URL.Query().Get("perche")
@@ -291,7 +291,7 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 		app.rendre(w, r, "liste.html", map[string]any{
 			"TitrePage": liste.Titre,
 			"OG": app.og(liste.Titre, descriptionOG(sansMarkdown(liste.Lettre), nbPerches), "/l/"+liste.Slug,
-				"/l/"+liste.Slug+".png?v="+empreinteCarte(liste.Titre, liste.Lettre, fmt.Sprint(nbPerches))),
+				"/l/"+liste.Slug+".jpg?v="+empreinteCarte(liste.Titre, liste.Lettre, fmt.Sprint(nbPerches))),
 			"Alternate": app.baseURL + "/l/" + liste.Slug + ".json",
 			"Liste":     liste,
 			"Perches":   vues,
@@ -342,7 +342,7 @@ func (app *App) servirCarte(w http.ResponseWriter, r *http.Request, c Carte) {
 		http.Error(w, "carte indisponible", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Content-Type", "image/jpeg")
 	w.Header().Set("Cache-Control", "public, max-age=3600")
 	w.Write(b)
 }
@@ -380,8 +380,8 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.HasSuffix(j, ".ics"):
 		format, j = "ics", strings.TrimSuffix(j, ".ics")
-	case strings.HasSuffix(j, ".png"):
-		format, j = "png", strings.TrimSuffix(j, ".png")
+	case strings.HasSuffix(j, ".jpg"):
+		format, j = "jpg", strings.TrimSuffix(j, ".jpg")
 	}
 	intention, liste, err := app.intentionParJeton(j)
 	if err != nil {
@@ -392,8 +392,8 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 	case "ics":
 		servirICS(w, intention.Titre, []Intention{*intention}, app.baseURL)
 		return
-	case "png":
-		app.servirCarte(w, r, app.carteDIntention(intention))
+	case "jpg":
+		app.servirCarteDIntention(w, r, intention)
 		return
 	}
 	v := app.vuePerche(intention, liste, merciDe(r), false)
@@ -408,7 +408,7 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 	app.rendre(w, r, "intention.html", map[string]any{
 		"TitrePage": intention.Titre,
 		"OG": app.og(intention.Titre, ogDesc, "/i/"+intention.Jeton,
-			"/i/"+intention.Jeton+".png?v="+empreinteCarte(intention.Titre, intention.Quand.String, intention.Fin.String, intention.Lieu, intention.PercheQuand.String, intention.PercheTendueLe.String)),
+			"/i/"+intention.Jeton+".jpg?v="+empreinteCarte(intention.Titre, intention.Quand.String, intention.Fin.String, intention.Lieu, intention.PercheQuand.String, intention.PercheTendueLe.String, intention.ImageSource.String)),
 		"Liste":         liste,
 		"V":             v,
 		"LienSeulement": intention.Visibilite == "lien",
@@ -711,6 +711,7 @@ func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id, _ := res.LastInsertId()
+	app.chercherImage(id, urlPlausible(r.FormValue("url_externe")))
 	http.Redirect(w, r, fmt.Sprintf("/e/%s?ok=ajoute#perche-%d", liste.JetonEdition, id), http.StatusSeeOther)
 }
 
@@ -834,6 +835,9 @@ func (app *App) majIntention(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Une perche tendue « tout du long » (sans dates propres) suit d'elle-même les dates de l'événement.
+	if lien := urlPlausible(r.FormValue("url_externe")); lien != "" && lien != intention.URLExterne.String && !intention.ImageRefusee {
+		app.chercherImage(intention.ID, lien)
+	}
 	intention.Titre, intention.Quand, intention.Fin = titre, sqlString(quand), sqlString(finTexte)
 	if change && intention.Tendue() && !intention.AnnuleeLe.Valid {
 		msg := fmt.Sprintf("« %s » change : %s", intention.Titre, intention.PercheQuandFR())

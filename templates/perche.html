@@ -46,7 +46,7 @@ Mon prénom peut apparaître sur cette page</label>
 {{end}}
 {{end}}
 
-{{define "perche-meta"}}<p class="meta"><b>{{.QuandFR}}</b>{{with .Lieu}} · {{.}}{{end}}{{if .URLExterne.Valid}} · <a href="{{.URLExterne.String}}" rel="noopener" title="{{.URLExterne.String}}">site ↗</a>{{end}}</p>{{end}}
+{{define "perche-meta"}}{{if .AvecImage}}<img class="illustration" src="/i/{{.Jeton}}/image.jpg" alt="" loading="lazy">{{end}}<p class="meta"><b>{{.QuandFR}}</b>{{with .Lieu}} · {{.}}{{end}}{{if .URLExterne.Valid}} · <a href="{{.URLExterne.String}}" rel="noopener" title="{{.URLExterne.String}}">site ↗</a>{{end}}</p>{{end}}
 
 {{/* Une carte de la chronologie : la ligne, puis l'événement entier qui s'ouvre sur place. Reçoit une VuePerche. */}}
 {{define "carte"}}

@@ -8,7 +8,9 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	"image/png"
+	"image/jpeg"
+	_ "image/png"
+	"net/http"
 	"strings"
 	"sync"
 
@@ -233,8 +235,74 @@ func dessinerCarte(c Carte) ([]byte, error) {
 		ecrire(img, fPied, teinteDoux, carteLargeur-carteMarge-l, carteHauteur-56, c.Pied)
 	}
 
+	return encoderCarte(img)
+}
+
+// dessinerCarteAvecImage : la photo du site en haut, le bandeau typographique en bas — le titre,
+// les dates, la perche. Sans Perches, l'image seule ne dirait pas d'où vient le lien.
+func dessinerCarteAvecImage(c Carte, photo image.Image) ([]byte, error) {
+	if err := chargerPolices(); err != nil {
+		return nil, err
+	}
+	const hautePhoto = 360
+	img := image.NewRGBA(image.Rect(0, 0, carteLargeur, carteHauteur))
+	draw.Draw(img, img.Bounds(), image.NewUniform(teintePapier), image.Point{}, draw.Src)
+	draw.Draw(img, image.Rect(0, 0, carteLargeur, hautePhoto), couvrir(photo, carteLargeur, hautePhoto), image.Point{}, draw.Src)
+	largeur := carteLargeur - 2*carteMarge - 60
+
+	baton(img, carteMarge, hautePhoto+34, 34)
+	ecrire(img, face(policeSans, 18), teinteDoux, carteMarge+48, hautePhoto+58, "P E R C H E S")
+
+	fTitre := face(policeSerif, 44)
+	titre := couperEnLignes(&font.Drawer{Face: fTitre}, c.Titre, largeur, 1)
+	y := hautePhoto + 90 + fTitre.Metrics().Ascent.Ceil()
+	ecrire(img, fTitre, teinteEncre, carteMarge, y, titre[0])
+	y += fTitre.Metrics().Height.Ceil() + 8
+
+	fSous := face(policeSans, 24)
+	y += fSous.Metrics().Ascent.Ceil()
+	if sous := couperEnLignes(&font.Drawer{Face: fSous}, c.Sous, largeur, 1); len(sous) > 0 && c.Sous != "" {
+		ecrire(img, fSous, teinteDoux, carteMarge, y, sous[0])
+		y += fSous.Metrics().Height.Ceil() + 6
+	}
+	if c.Perche != "" {
+		fP := face(policeSans, 26)
+		y += fP.Metrics().Ascent.Ceil() - 4
+		baton(img, carteMarge, y-26, 30)
+		ecrire(img, fP, teinteEncre, carteMarge+42, y, c.Perche)
+	}
+	if c.Pied != "" {
+		fPied := face(policeSans, 18)
+		l := (&font.Drawer{Face: fPied}).MeasureString(c.Pied).Ceil()
+		ecrire(img, fPied, teinteDoux, carteLargeur-carteMarge-l, carteHauteur-40, c.Pied)
+	}
+	return encoderCarte(img)
+}
+
+// servirCarteDIntention : avec la photo du site si l'événement en a une, sinon typographique.
+func (app *App) servirCarteDIntention(w http.ResponseWriter, r *http.Request, i *Intention) {
+	c := app.carteDIntention(i)
+	if i.AvecImage() {
+		var b []byte
+		if app.db.QueryRow(`SELECT image FROM intentions WHERE id = ?`, i.ID).Scan(&b) == nil {
+			if photo, _, err := image.Decode(bytes.NewReader(b)); err == nil {
+				if out, err := dessinerCarteAvecImage(c, photo); err == nil {
+					w.Header().Set("Content-Type", "image/jpeg")
+					w.Header().Set("Cache-Control", "public, max-age=3600")
+					w.Write(out)
+					return
+				}
+			}
+		}
+	}
+	app.servirCarte(w, r, c)
+}
+
+// encoderCarte : JPEG de bonne qualité — WhatsApp ignore les aperçus au-delà de ~300 Ko, et une
+// carte avec photo en PNG les dépassait.
+func encoderCarte(img image.Image) ([]byte, error) {
 	var buf bytes.Buffer
-	if err := png.Encode(&buf, img); err != nil {
+	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 88}); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil

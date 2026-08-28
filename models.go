@@ -37,6 +37,8 @@ type Intention struct {
 	PercheTendueLe sql.NullString
 	PercheQuand    sql.NullString
 	PercheFin      sql.NullString
+	ImageSource    sql.NullString // l'image du site est là (le BLOB ne se charge qu'à la demande)
+	ImageRefusee   bool
 	Visibilite     string
 	AnnuleeLe      sql.NullString
 	CreeLe         string
@@ -66,6 +68,9 @@ func analyserQuand(q string) (t time.Time, avecHeure bool, err error) {
 	t, err = time.ParseInLocation("2006-01-02", q, time.Local)
 	return t, false, err
 }
+
+// AvecImage : une copie de l'image du site est servie sous /i/{jeton}/image.jpg.
+func (i *Intention) AvecImage() bool { return i.ImageSource.Valid && i.ImageSource.String != "" }
 
 // Tendue : une perche est posée sur ce repéré — « j'y vais, si ça te dit ».
 func (i *Intention) Tendue() bool { return i.PercheTendueLe.Valid }
@@ -340,14 +345,14 @@ var fonctionsTpl = template.FuncMap{
 // ---- requêtes ----
 
 const colonnesIntention = `id, liste_id, jeton, titre, description, quand, fin, echeance_decision,
-	lieu, url_externe, jy_vais_de_toute_facon, perche_tendue_le, perche_quand, perche_fin, visibilite, annulee_le, cree_le`
+	lieu, url_externe, jy_vais_de_toute_facon, perche_tendue_le, perche_quand, perche_fin, image_source, image_refusee, visibilite, annulee_le, cree_le`
 
 type scanneur interface{ Scan(dest ...any) error }
 
 func scanIntention(row scanneur) (*Intention, error) {
 	var i Intention
 	err := row.Scan(&i.ID, &i.ListeID, &i.Jeton, &i.Titre, &i.Description, &i.Quand, &i.Fin, &i.Echeance,
-		&i.Lieu, &i.URLExterne, &i.JyVais, &i.PercheTendueLe, &i.PercheQuand, &i.PercheFin, &i.Visibilite, &i.AnnuleeLe, &i.CreeLe)
+		&i.Lieu, &i.URLExterne, &i.JyVais, &i.PercheTendueLe, &i.PercheQuand, &i.PercheFin, &i.ImageSource, &i.ImageRefusee, &i.Visibilite, &i.AnnuleeLe, &i.CreeLe)
 	if err != nil {
 		return nil, err
 	}

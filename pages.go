@@ -202,3 +202,34 @@ func (app *App) retirerPerche(w http.ResponseWriter, r *http.Request) {
 	}
 	http.Redirect(w, r, fmt.Sprintf("/e/%s?ok=retiree#perche-%d", liste.JetonEdition, intention.ID), http.StatusSeeOther)
 }
+
+// servirImage : la copie réduite de l'image du site, depuis notre propre origine.
+func (app *App) servirImage(w http.ResponseWriter, r *http.Request) {
+	var b []byte
+	if err := app.db.QueryRow(`SELECT image FROM intentions WHERE jeton = ? AND image IS NOT NULL`, r.PathValue("jeton")).Scan(&b); err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "image/jpeg")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Write(b)
+}
+
+// imageDuSite : depuis l'édition — « Sans image » (et on n'en cherchera plus) ou « Récupérer
+// l'image du site » (à nouveau, ou pour la première fois).
+func (app *App) imageDuSite(w http.ResponseWriter, r *http.Request) {
+	if app.tropVite(w, r) {
+		return
+	}
+	liste, intention, ok := app.intentionDuChemin(w, r)
+	if !ok {
+		return
+	}
+	if r.FormValue("retirer") != "" {
+		app.db.Exec(`UPDATE intentions SET image = NULL, image_source = NULL, image_refusee = 1 WHERE id = ?`, intention.ID)
+	} else {
+		app.db.Exec(`UPDATE intentions SET image_refusee = 0 WHERE id = ?`, intention.ID)
+		app.chercherImage(intention.ID, intention.URLExterne.String)
+	}
+	http.Redirect(w, r, fmt.Sprintf("/e/%s#perche-%d", liste.JetonEdition, intention.ID), http.StatusSeeOther)
+}

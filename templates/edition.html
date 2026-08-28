@@ -96,6 +96,7 @@ Le lien vient de partir à {{.Liste.Email.String}} — il te ramène ici depuis 
 </form>
 </details>
 {{end}}
+{{if .URLExterne.Valid}}<form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/image" class="image-site">{{if .AvecImage}}<img src="/i/{{.Jeton}}/image.jpg" alt="" loading="lazy"><span class="discret">Image du site, dans la carte et l'aperçu.</span><button class="discret" name="retirer" value="1">Sans image</button>{{else}}<span class="discret">{{if .ImageRefusee}}Sans image.{{else}}Pas d'image du site pour l'instant.{{end}}</span><button class="discret">Récupérer l'image du site</button>{{end}}</form>{{end}}
 <details{{if eq $.Modifier (printf "%d" .ID)}} open{{end}}>
 <summary>Modifier l'événement</summary>
 <form method="post" action="/e/{{$.Liste.JetonEdition}}/intentions/{{.ID}}/maj">

@@ -11,6 +11,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/color"
 	"image/png"
 	"net/http"
 	"net/http/httptest"
@@ -1529,18 +1531,18 @@ func TestDecision_CarteDePartageParListeEtParEvenement(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
 	i := intentionTest(t, app, dans(3), "KIKK", "page")
-	for _, chemin := range []string{"/l/test.png", "/i/" + i.Jeton + ".png"} {
+	for _, chemin := range []string{"/l/test.jpg", "/i/" + i.Jeton + ".jpg"} {
 		rec := GET(app, chemin)
-		if rec.Code != 200 || rec.Header().Get("Content-Type") != "image/png" {
+		if rec.Code != 200 || rec.Header().Get("Content-Type") != "image/jpeg" {
 			t.Fatalf("%s : %d %s", chemin, rec.Code, rec.Header().Get("Content-Type"))
 		}
-		img, err := png.Decode(bytes.NewReader(rec.Body.Bytes()))
+		img, _, err := image.Decode(bytes.NewReader(rec.Body.Bytes()))
 		if err != nil || img.Bounds().Dx() != 1200 || img.Bounds().Dy() != 630 {
 			t.Fatalf("%s : image invalide (%v)", chemin, err)
 		}
 	}
 	page := GET(app, "/l/test").Body.String()
-	if !strings.Contains(page, `property="og:image" content="http://perches.test/l/test.png?v=`) || !strings.Contains(page, `name="twitter:card"`) {
+	if !strings.Contains(page, `property="og:image" content="http://perches.test/l/test.jpg?v=`) || !strings.Contains(page, `name="twitter:card"`) {
 		t.Fatal("la page déclare sa carte, avec une empreinte, et la carte Twitter")
 	}
 	avant := regexp.MustCompile(`og:image" content="([^"]+)"`).FindStringSubmatch(GET(app, "/i/"+i.Jeton).Body.String())[1]
@@ -1549,7 +1551,98 @@ func TestDecision_CarteDePartageParListeEtParEvenement(t *testing.T) {
 	if avant == apres {
 		t.Fatal("changer le titre change l'adresse de la carte")
 	}
-	if rec := GET(app, "/l/inconnue.png"); rec.Code != 404 {
+	if rec := GET(app, "/l/inconnue.jpg"); rec.Code != 404 {
 		t.Fatalf("carte d'une liste inconnue : %d", rec.Code)
+	}
+}
+
+func TestDecision_ImageDuSiteDeLEvenement(t *testing.T) {
+	// 1b : quand l'hôte donne un lien, Perches lit la page comme une messagerie, garde une copie
+	// réduite de son og:image, la sert lui-même, la montre dans la carte et la compose dans l'aperçu.
+	app, _ := appTest(t)
+	app.imagesLocales = true
+	listeTest(t, app)
+	photo := image.NewRGBA(image.Rect(0, 0, 1600, 900))
+	for x := 0; x < 1600; x++ {
+		for y := 0; y < 900; y++ {
+			photo.Set(x, y, color.RGBA{uint8(x / 7), 90, uint8(y / 4), 255})
+		}
+	}
+	var pngPhoto bytes.Buffer
+	png.Encode(&pngPhoto, photo)
+	site := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/expo":
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			fmt.Fprint(w, `<html><head><meta property="og:title" content="Expo"><meta content="/visuel.png" property="og:image"></head><body>…</body></html>`)
+		case "/visuel.png":
+			w.Header().Set("Content-Type", "image/png")
+			w.Write(pngPhoto.Bytes())
+		case "/rien":
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprint(w, `<html><head><title>rien</title></head></html>`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer site.Close()
+	if rec := POST(app, "/e/edtest/intentions", url.Values{"titre": {"Expo Ensor"}, "date": {dans(3)}, "url_externe": {site.URL + "/expo"}}); rec.Code != 303 {
+		t.Fatalf("création : %d", rec.Code)
+	}
+	var j string
+	var id int64
+	app.db.QueryRow(`SELECT jeton, id FROM intentions WHERE titre = 'Expo Ensor'`).Scan(&j, &id)
+	i, _, _ := app.intentionParJeton(j)
+	if !i.AvecImage() || i.ImageSource.String != site.URL+"/visuel.png" {
+		t.Fatalf("l'image du site est récupérée à la création : %+v", i.ImageSource)
+	}
+	rec := GET(app, "/i/"+j+"/image.jpg")
+	img, _, err := image.Decode(bytes.NewReader(rec.Body.Bytes()))
+	if rec.Code != 200 || rec.Header().Get("Content-Type") != "image/jpeg" || err != nil || img.Bounds().Dx() != 1200 {
+		t.Fatalf("copie réduite servie d'ici : %d %v", rec.Code, err)
+	}
+	if !strings.Contains(GET(app, "/l/test").Body.String(), `class="illustration" src="/i/`+j+`/image.jpg"`) {
+		t.Fatal("la carte montre l'image")
+	}
+	carte := GET(app, "/i/"+j+".png")
+	if c, err := png.Decode(bytes.NewReader(carte.Body.Bytes())); err != nil || c.Bounds().Dx() != 1200 || c.Bounds().Dy() != 630 {
+		t.Fatal("l'aperçu composé garde le format")
+	}
+	if r, g, b, _ := (func() (uint32, uint32, uint32, uint32) {
+		c, _ := png.Decode(bytes.NewReader(carte.Body.Bytes()))
+		return c.At(600, 100).RGBA()
+	})(); r>>8 == 0xf3 && g>>8 == 0xf3 && b>>8 == 0xef {
+		t.Fatal("la photo occupe le haut de l'aperçu")
+	}
+	// « Sans image » : retirée, et plus jamais cherchée — même en changeant le lien
+	POST(app, fmt.Sprintf("/e/edtest/intentions/%d/image", id), url.Values{"retirer": {"1"}})
+	if GET(app, "/i/"+j+"/image.jpg").Code != 404 {
+		t.Fatal("sans image")
+	}
+	POST(app, fmt.Sprintf("/e/edtest/intentions/%d/maj", id), url.Values{"titre": {"Expo Ensor"}, "date": {dans(3)}, "url_externe": {site.URL + "/expo?bis"}})
+	if i, _, _ := app.intentionParJeton(j); i.AvecImage() {
+		t.Fatal("refusée, l'image n'est plus cherchée")
+	}
+	// redemandée : elle revient
+	POST(app, fmt.Sprintf("/e/edtest/intentions/%d/image", id), nil)
+	if i, _, _ := app.intentionParJeton(j); !i.AvecImage() {
+		t.Fatal("récupérer l'image du site, à la demande")
+	}
+	// une page sans image : rien, sans bruit
+	POST(app, "/e/edtest/intentions", url.Values{"titre": {"Rien"}, "date": {dans(3)}, "url_externe": {site.URL + "/rien"}})
+	var src sql.NullString
+	app.db.QueryRow(`SELECT image_source FROM intentions WHERE titre = 'Rien'`).Scan(&src)
+	if src.Valid {
+		t.Fatal("pas d'og:image, pas d'image")
+	}
+	// et jamais d'adresse interne : le même site, sans la permission des tests, est refusé
+	app.imagesLocales = false
+	POST(app, "/e/edtest/intentions", url.Values{"titre": {"Interne"}, "date": {dans(3)}, "url_externe": {site.URL + "/expo"}})
+	app.db.QueryRow(`SELECT image_source FROM intentions WHERE titre = 'Interne'`).Scan(&src)
+	if src.Valid {
+		t.Fatal("un serveur ne va pas chercher une adresse interne pour le compte d'un inconnu")
+	}
+	if len(GET(app, "/e/edtest").Body.String()) == 0 {
+		t.Fatal("édition")
 	}
 }

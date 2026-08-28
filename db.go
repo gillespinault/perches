@@ -95,6 +95,15 @@ func migrer(db *sql.DB) error {
 			}
 		}
 	}
+	// 2026-08-28 (carte 1b) : l'image du site de l'événement, en copie réduite.
+	db.QueryRow(`SELECT count(*) FROM pragma_table_info('intentions') WHERE name = 'image'`).Scan(&n)
+	if n == 0 {
+		for _, col := range []string{"image BLOB", "image_source TEXT", "image_refusee INTEGER NOT NULL DEFAULT 0"} {
+			if _, err := db.Exec(`ALTER TABLE intentions ADD COLUMN ` + col); err != nil {
+				return err
+			}
+		}
+	}
 	if strings.Contains(def, "jaurais_aime") {
 		return nil
 	}
