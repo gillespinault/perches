@@ -123,8 +123,8 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 {{end}}
 </details>
 
-<p class="exports"><a href="/e/{{.Liste.JetonEdition}}/export.json">tout exporter (JSON)</a> ·
-<form method="post" action="/oublier" class="enligne"><button class="discret">quitter ce navigateur</button></form></p>
+<div class="exports"><a href="/e/{{.Liste.JetonEdition}}/export.json">tout exporter (JSON)</a> ·
+<form method="post" action="/oublier" class="enligne"><button class="discret">quitter ce navigateur</button></form></div>
 {{template "pied" .}}
 
 {{define "statut"}}{{if eq . "jy_serai"}}j'y serai{{else if eq . "peut_etre"}}peut-être{{else}}j'aurais bien aimé{{end}}{{end}}
