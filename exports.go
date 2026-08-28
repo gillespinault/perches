@@ -42,10 +42,15 @@ func servirICS(w http.ResponseWriter, nom string, intentions []Intention, baseUR
 		ligne("BEGIN:VEVENT")
 		ligne("UID:" + i.Jeton + "@perches")
 		ligne("DTSTAMP:" + horodatage)
-		if avecHeure {
+		switch fin, _, errFin := analyserQuand(i.Fin.String); {
+		case i.Fin.Valid && errFin == nil:
+			// plusieurs jours : journées entières, DTEND exclusif (le lendemain du dernier jour)
+			ligne("DTSTART;VALUE=DATE:" + t.Format("20060102"))
+			ligne("DTEND;VALUE=DATE:" + fin.AddDate(0, 0, 1).Format("20060102"))
+		case avecHeure:
 			ligne("DTSTART:" + t.Format("20060102T150400"))
 			ligne("DURATION:PT2H")
-		} else {
+		default:
 			ligne("DTSTART;VALUE=DATE:" + t.Format("20060102"))
 		}
 		if i.AnnuleeLe.Valid {
@@ -78,9 +83,9 @@ type intentionJSON struct {
 	Titre       string `json:"titre"`
 	Description string `json:"description,omitempty"`
 	Quand       string `json:"quand,omitempty"`
+	Fin         string `json:"fin,omitempty"`
 	Lieu        string `json:"lieu,omitempty"`
 	URLExterne  string `json:"url_externe,omitempty"`
-	Capacite    int64  `json:"capacite,omitempty"`
 	JyVais      bool   `json:"jy_vais_de_toute_facon"`
 	Annulee     bool   `json:"annulee,omitempty"`
 }
@@ -88,8 +93,8 @@ type intentionJSON struct {
 func versIntentionJSON(i Intention) intentionJSON {
 	return intentionJSON{
 		Jeton: i.Jeton, Titre: i.Titre, Description: i.Description,
-		Quand: i.Quand.String, Lieu: i.Lieu, URLExterne: i.URLExterne.String,
-		Capacite: i.Capacite.Int64, JyVais: i.JyVais, Annulee: i.AnnuleeLe.Valid,
+		Quand: i.Quand.String, Fin: i.Fin.String, Lieu: i.Lieu, URLExterne: i.URLExterne.String,
+		JyVais: i.JyVais, Annulee: i.AnnuleeLe.Valid,
 	}
 }
 

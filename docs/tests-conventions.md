@@ -34,9 +34,8 @@ Convention de nommage Go : `TestConvNN_NomParlant`.
 - `TestConv02_PostNonRejete` [H] — `POST` avec `statut=non` → 400.
 - `TestConv02_SchemaRefuseLeNon` [S] — `INSERT … statut='non'` → violation de
   CHECK (vérifié le 2026-08-27 sur le schéma).
-- `TestConv02_CapacitePleineNeBloquePas` [H] — capacité 2, trois réponses : le
-  formulaire reste actif, le POST de la 4e réponse est accepté, et ni « complet »
-  ni aucun équivalent n'apparaît dans le HTML.
+- `TestConv02_RienNeSeRemplit` [H] — trois réponses : le formulaire reste actif, la
+  4e est acceptée, et ni « complet » ni aucun équivalent n'apparaît dans le HTML.
 
 ## C3 — Pas de fil de discussion
 
@@ -48,13 +47,10 @@ Convention de nommage Go : `TestConvNN_NomParlant`.
 - `TestConv03_AucunBoutonRepondre` [H] — la vue hôte des mots n'offre aucun
   mécanisme de réponse.
 
-## C4 — Capacité indicative, jamais bloquante
+## C4 — Retirée le 28 août 2026 : une perche ne compte pas les places
 
-- `TestConv04_CapaciteAffichee` [H] — si une capacité est définie, la page la
-  montre (« Capacité indicative : N » seule, ou « … — 2 sur 4 places environ » avec les
-  présences).
-- Le versant « jamais bloquante » est couvert par
-  `TestConv02_CapacitePleineNeBloquePas`.
+- `TestConv04_PasDeCapacite` [S+H] — ni colonne `capacite`, ni champ dans l'édition,
+  ni mention de « places » : un nombre de places serait déjà une manière de dire non.
 
 ## C5 — « J'y vais de toute façon » par défaut
 
@@ -126,6 +122,10 @@ Convention de nommage Go : `TestConvNN_NomParlant`.
   `echeance_decision` → violation de CHECK (vérifié le 2026-08-27).
 - `TestDecision_CodeInvitationRequis` [H] — instance en mode code d'invitation :
   création de liste sans code valide → refus.
+- `TestDecision_PercheSurPlusieursJours` [H] — une perche avec un dernier jour se dit
+  « du … au … », reste sur la page jusqu'à ce jour, donne à l'agenda des journées
+  entières (`DTEND`), et refuse une fin qui précède le début. Ajouter ou changer la fin
+  est de la logistique : les e-mails connus sont prévenus.
 
 ## Hors périmètre : tests d'absence
 

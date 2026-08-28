@@ -6,7 +6,7 @@
 <section class="intentions cartes">
 {{range .Intentions}}
 <a class="carte" href="/i/{{.Jeton}}">
-<span class="quand">{{quandfr .Quand}}</span>
+<span class="quand">{{.QuandFR}}</span>
 <span class="titre">{{.Titre}}</span>
 {{with .Lieu}}<span class="lieu">{{.}}</span>{{end}}
 <span class="geste">si ça te dit →</span>

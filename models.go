@@ -28,10 +28,10 @@ type Intention struct {
 	Titre       string
 	Description string
 	Quand       sql.NullString
+	Fin         sql.NullString // dernier jour, si la perche dure plusieurs jours (décision 2026-08-28)
 	Echeance    sql.NullString
 	Lieu        string
 	URLExterne  sql.NullString
-	Capacite    sql.NullInt64
 	JyVais      bool
 	Visibilite  string
 	AnnuleeLe   sql.NullString
@@ -63,12 +63,23 @@ func analyserQuand(q string) (t time.Time, avecHeure bool, err error) {
 	return t, false, err
 }
 
-func (i *Intention) Passee() bool {
+// dernierJour : le jour où la perche se termine — la date de fin si elle dure, sinon le jour même.
+func (i *Intention) dernierJour() (t time.Time, avecHeure bool, ok bool) {
 	if !i.Quand.Valid {
-		return false
+		return t, false, false
+	}
+	if i.Fin.Valid {
+		if f, _, err := analyserQuand(i.Fin.String); err == nil {
+			return f, false, true
+		}
 	}
 	t, avecHeure, err := analyserQuand(i.Quand.String)
-	if err != nil {
+	return t, avecHeure, err == nil
+}
+
+func (i *Intention) Passee() bool {
+	t, avecHeure, ok := i.dernierJour()
+	if !ok {
 		return false
 	}
 	if avecHeure {
@@ -79,16 +90,36 @@ func (i *Intention) Passee() bool {
 	return time.Now().After(t)
 }
 
-// ReponsesEffacees : effacement public des réponses, 30 jours après la date.
+// ReponsesEffacees : effacement public des réponses, 30 jours après le dernier jour.
 func (i *Intention) ReponsesEffacees() bool {
-	if !i.Quand.Valid {
-		return false
-	}
-	t, _, err := analyserQuand(i.Quand.String)
-	if err != nil {
+	t, _, ok := i.dernierJour()
+	if !ok {
 		return false
 	}
 	return time.Now().After(t.Add(30 * 24 * time.Hour))
+}
+
+// QuandFR : la date telle que la page la dit — « du lundi 28 septembre au vendredi 2 octobre »
+// si la perche dure plusieurs jours, sinon la date seule, relative quand elle est proche.
+func (i *Intention) QuandFR() string {
+	if !i.Fin.Valid || !i.Quand.Valid {
+		return quandFR(i.Quand)
+	}
+	debut, _, err := analyserQuand(i.Quand.String)
+	fin, _, err2 := analyserQuand(i.Fin.String)
+	if err != nil || err2 != nil {
+		return quandFR(i.Quand)
+	}
+	return "du " + dateFR(debut, fin.Year() != debut.Year()) + " au " + dateFR(fin, true)
+}
+
+// dateFR : « lundi 28 septembre », l'année seulement si elle n'est pas celle en cours.
+func dateFR(t time.Time, avecAnnee bool) string {
+	s := fmt.Sprintf("%s %d %s", joursFR[int(t.Weekday())], t.Day(), moisFR[t.Month()-1])
+	if avecAnnee && t.Year() != time.Now().Year() {
+		s += fmt.Sprintf(" %d", t.Year())
+	}
+	return s
 }
 
 var joursFR = [...]string{"dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"}
@@ -147,15 +178,15 @@ var fonctionsTpl = template.FuncMap{
 
 // ---- requêtes ----
 
-const colonnesIntention = `id, liste_id, jeton, titre, description, quand, echeance_decision,
-	lieu, url_externe, capacite, jy_vais_de_toute_facon, visibilite, annulee_le, cree_le`
+const colonnesIntention = `id, liste_id, jeton, titre, description, quand, fin, echeance_decision,
+	lieu, url_externe, jy_vais_de_toute_facon, visibilite, annulee_le, cree_le`
 
 type scanneur interface{ Scan(dest ...any) error }
 
 func scanIntention(row scanneur) (*Intention, error) {
 	var i Intention
-	err := row.Scan(&i.ID, &i.ListeID, &i.Jeton, &i.Titre, &i.Description, &i.Quand, &i.Echeance,
-		&i.Lieu, &i.URLExterne, &i.Capacite, &i.JyVais, &i.Visibilite, &i.AnnuleeLe, &i.CreeLe)
+	err := row.Scan(&i.ID, &i.ListeID, &i.Jeton, &i.Titre, &i.Description, &i.Quand, &i.Fin, &i.Echeance,
+		&i.Lieu, &i.URLExterne, &i.JyVais, &i.Visibilite, &i.AnnuleeLe, &i.CreeLe)
 	if err != nil {
 		return nil, err
 	}
@@ -198,11 +229,12 @@ func (app *App) intentionDeListe(listeID, id int64) (*Intention, error) {
 		`SELECT `+colonnesIntention+` FROM intentions WHERE id = ? AND liste_id = ?`, id, listeID))
 }
 
-// intentionsPubliques : ce que montre la page publique — visibles, non annulées, à venir.
+// intentionsPubliques : ce que montre la page publique — visibles, non annulées, à venir
+// ou en cours (une perche de plusieurs jours reste sur la page jusqu'à son dernier jour).
 func (app *App) intentionsPubliques(listeID int64) ([]Intention, error) {
 	return app.requeteIntentions(`SELECT `+colonnesIntention+` FROM intentions
 		WHERE liste_id = ? AND visibilite = 'page' AND annulee_le IS NULL
-		  AND quand IS NOT NULL AND date(quand) >= date('now','localtime')
+		  AND quand IS NOT NULL AND date(coalesce(fin, quand)) >= date('now','localtime')
 		ORDER BY quand`, listeID)
 }
 

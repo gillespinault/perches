@@ -17,13 +17,12 @@ Ce projet est maintenu par intermittence ; le silence vaut « pas maintenant ».
 ## Le geste : l'intention, pas l'invitation
 
 Une intention — une *perche*, à l'écran — comporte une activité, un moment (« à fixer »
-viendra plus tard), un lieu, des places à titre indicatif, et la mention « j'y vais de
-toute façon ». Ce qui la distingue d'une
-invitation :
+viendra plus tard), éventuellement un dernier jour si elle dure, un lieu, et la mention
+« j'y vais de toute façon ». Ce qui la distingue d'une invitation :
 
 - **Elle ne demande rien.** Aucune réponse n'est attendue ; le silence vaut « pas cette fois ».
 - **Elle n'a pas de négatif.** On peut dire « j'y serai », « peut-être » ou « ah zut, j'aurais bien aimé » — cette dernière dit l'envie, pas l'absence. Il n'existe pas de bouton « non » — ni pour l'invité (aucun refus à formuler), ni pour l'hôte (aucun refus à lire).
-- **Elle est bornée.** Une date, une durée implicite. Elle se termine d'elle-même.
+- **Elle est bornée.** Une date — ou un premier et un dernier jour. Elle se termine d'elle-même.
 - **Elle est asymétrique et l'assume.** L'hôte y va de toute façon ; l'invité s'ajoute ou non. Personne ne dépend de personne.
 - **Elle porte son mode d'emploi.** Les conventions sont affichées par l'outil, pas par la personne.
 
@@ -35,7 +34,7 @@ structure — boutons, champs, absence de champs — et sont encodées en tests.
 1. Le silence vaut « pas cette fois ».
 2. Aucun signal négatif n'existe dans le système. Trois réponses — « j'y serai », « peut-être », « ah zut, j'aurais bien aimé » — et aucune n'est un refus.
 3. Pas de fil de discussion. Au plus une ligne, lue, sans réponse attendue.
-4. Capacité affichée sur chaque intention — indicative, jamais bloquante.
+4. *Retirée le 28 août 2026.* Une perche ne compte pas les places : un nombre serait déjà une manière de dire non.
 5. « J'y vais de toute façon » — toujours, sans option.
 6. La voix de l'hôte est visible partout : son introduction ouvre sa page et accompagne chaque perche. Pas de champ « état » à part — il dit où il en est dans ses mots.
 7. Aucune notification poussée vers l'hôte ; il va chercher l'information quand il veut.

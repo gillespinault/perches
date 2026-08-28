@@ -38,9 +38,9 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 {{if eq .OK "retablie"}}<p class="ok">Rétablie — ceux qui avaient laissé un e-mail sont prévenus.</p>{{end}}
 {{range .AVenir}}
 <article class="edition carte-atelier" id="perche-{{.ID}}">
-<p class="quand">{{quandfr .Quand}}{{with .Lieu}} — {{.}}{{end}}</p>
+<p class="quand">{{.QuandFR}}{{with .Lieu}} — {{.}}{{end}}</p>
 <h3><a href="/i/{{.Jeton}}" target="_blank" rel="noopener">{{.Titre}}</a></h3>
-{{if or (eq .Visibilite "lien") .Capacite.Valid}}<p class="discret">{{if eq .Visibilite "lien"}}par lien seulement{{end}}{{if and (eq .Visibilite "lien") .Capacite.Valid}} · {{end}}{{if .Capacite.Valid}}{{.Capacite.Int64}} places, à titre indicatif{{end}}</p>{{end}}
+{{if eq .Visibilite "lien"}}<p class="discret">par lien seulement</p>{{end}}
 <p class="partage discret">Lien de cette perche :
 <span class="copiable"><span id="lien-i-{{.ID}}">{{$.BaseURL}}/i/{{.Jeton}}</span><button type="button" class="discret" hidden data-copier="lien-i-{{.ID}}">copier</button></span></p>
 <ul class="reponses">
@@ -60,8 +60,8 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 <label>Quelques mots <textarea name="description" rows="3">{{.Description}}</textarea></label>
 <details>
 <summary>Plus d'options</summary>
+<label>Jusqu'au — si ça dure plusieurs jours <input type="date" name="fin" value="{{.Fin.String}}"></label>
 <label>Lien externe <input name="url_externe" type="url" value="{{.URLExterne.String}}"></label>
-<label>Places, à titre indicatif <input name="capacite" type="number" min="1" value="{{if .Capacite.Valid}}{{.Capacite.Int64}}{{end}}"></label>
 <label>Visibilité
 <select name="visibilite">
 <option value="page"{{if eq .Visibilite "page"}} selected{{end}}>sur ma page</option>
@@ -88,8 +88,8 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 <label>Quelques mots <textarea name="description" rows="3" placeholder="optionnel — le contexte, l'envie, ce qu'il faut savoir ; **gras**, liens et listes acceptés"></textarea></label>
 <details>
 <summary>Plus d'options</summary>
+<label>Jusqu'au — si ça dure plusieurs jours <input type="date" name="fin"></label>
 <label>Lien externe (l'expo, le festival…) <input name="url_externe" type="url"></label>
-<label>Places, à titre indicatif — affichées, jamais bloquantes <input name="capacite" type="number" min="1"></label>
 <label>Visibilité
 <select name="visibilite">
 <option value="page">sur ma page</option>
@@ -106,7 +106,7 @@ Le lien vient de partir à {{.Liste.Email.String}} — c'est ta clé, garde-la p
 {{if eq .OK "annulee"}}<p class="ok">Annulée — ceux qui avaient laissé un e-mail sont prévenus.</p>{{end}}
 {{range .Passees}}
 <article class="edition carte-atelier passee" id="perche-{{.ID}}">
-<p class="quand">{{quandfr .Quand}}{{with .Lieu}} — {{.}}{{end}}{{if .AnnuleeLe.Valid}} · annulée{{end}}</p>
+<p class="quand">{{.QuandFR}}{{with .Lieu}} — {{.}}{{end}}{{if .AnnuleeLe.Valid}} · annulée{{end}}</p>
 <h3>{{.Titre}}</h3>
 <ul class="reponses">
 {{range .Reponses}}

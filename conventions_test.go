@@ -61,13 +61,13 @@ func listeTest(t *testing.T, app *App) *Liste {
 
 var compteurJeton int
 
-func intentionTest(t *testing.T, app *App, quand, titre, visibilite string, capacite any) *Intention {
+func intentionTest(t *testing.T, app *App, quand, titre, visibilite string) *Intention {
 	t.Helper()
 	compteurJeton++
 	j := fmt.Sprintf("jetontest%d", compteurJeton)
-	_, err := app.db.Exec(`INSERT INTO intentions (liste_id, jeton, titre, description, quand, lieu, capacite, visibilite)
-		VALUES (1, ?, ?, 'On ira voir les machines ensemble.', ?, 'Namur', ?, ?)`,
-		j, titre, quand, capacite, visibilite)
+	_, err := app.db.Exec(`INSERT INTO intentions (liste_id, jeton, titre, description, quand, lieu, visibilite)
+		VALUES (1, ?, ?, 'On ira voir les machines ensemble.', ?, 'Namur', ?)`,
+		j, titre, quand, visibilite)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestConv01_LeSystemeIgnoreLesNonRepondants(t *testing.T) {
 func TestConv01_AucuneRelance(t *testing.T) {
 	app, m := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(1), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(1), "KIKK", "page")
 	// une réponse sans e-mail : rien ne doit partir, jamais
 	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "", "")
 	app.envoyerRappels()
@@ -163,7 +163,7 @@ func TestConv01_AucuneRelance(t *testing.T) {
 func TestConv02_AucunBoutonNon(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	body := GET(app, "/i/"+i.Jeton).Body.String()
 	bas := strings.ToLower(body)
 	if strings.Contains(bas, `value="non"`) || strings.Contains(bas, ">non<") {
@@ -182,7 +182,7 @@ func TestConv02_AucunBoutonNon(t *testing.T) {
 func TestConv02_PostNonRejete(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	rec := POST(app, "/i/"+i.Jeton+"/reponses", url.Values{"prenom": {"Marc"}, "statut": {"non"}})
 	if rec.Code != 400 {
 		t.Fatalf("statut=non doit être rejeté (400), reçu %d", rec.Code)
@@ -192,23 +192,25 @@ func TestConv02_PostNonRejete(t *testing.T) {
 func TestConv02_SchemaRefuseLeNon(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	_, err := app.db.Exec(`INSERT INTO reponses (intention_id, prenom, statut) VALUES (?, 'Marc', 'non')`, i.ID)
 	if err == nil {
 		t.Fatal("le schéma a accepté un statut « non »")
 	}
 }
 
-func TestConv02_CapacitePleineNeBloquePas(t *testing.T) {
+func TestConv02_RienNeSeRemplit(t *testing.T) {
+	// Seconde passe (2026-08-28) : la capacité n'existe plus. Quel que soit le nombre de réponses,
+	// le formulaire reste, et le mot « complet » n'apparaît jamais : ce serait un signal négatif.
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "Table au restaurant", "page", 2)
+	i := intentionTest(t, app, dans(3), "Table au restaurant", "page")
 	for _, prenom := range []string{"Anna", "Marc", "Léa"} {
 		repondreTest(t, app, i.Jeton, prenom, "jy_serai", "", "")
 	}
 	body := GET(app, "/i/"+i.Jeton).Body.String()
 	if !strings.Contains(body, `name="statut"`) {
-		t.Fatal("le formulaire a disparu une fois la capacité dépassée")
+		t.Fatal("le formulaire a disparu")
 	}
 	if regexp.MustCompile(`(?i)\bcomplet`).MatchString(body) { // le mot, pas l'attribut autocomplete
 		t.Fatal("la page affiche « complet » — c'est un signal négatif")
@@ -221,7 +223,7 @@ func TestConv02_CapacitePleineNeBloquePas(t *testing.T) {
 func TestConv03_MotUneLigneMax(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	rec := POST(app, "/i/"+i.Jeton+"/reponses",
 		url.Values{"prenom": {"Anna"}, "statut": {"jy_serai"}, "mot": {"ligne un\nligne deux"}})
 	if rec.Code != 400 {
@@ -237,7 +239,7 @@ func TestConv03_MotUneLigneMax(t *testing.T) {
 func TestConv03_MotsInvisiblesDesAutresInvites(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "merci pour la perche", "")
 	if strings.Contains(GET(app, "/i/"+i.Jeton).Body.String(), "merci pour la perche") {
 		t.Fatal("le mot est visible sur la page publique")
@@ -250,7 +252,7 @@ func TestConv03_MotsInvisiblesDesAutresInvites(t *testing.T) {
 func TestConv03_AucunBoutonRepondre(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "quel plaisir", "")
 	if strings.Contains(strings.ToLower(GET(app, "/e/edtest").Body.String()), "répondre") {
 		t.Fatal("la vue hôte suggère de répondre au mot — le mot se lit, sans suite")
@@ -259,12 +261,18 @@ func TestConv03_AucunBoutonRepondre(t *testing.T) {
 
 // ---- C4 : capacité indicative ----
 
-func TestConv04_CapaciteAffichee(t *testing.T) {
+func TestConv04_PasDeCapacite(t *testing.T) {
+	// Convention 4 retirée le 2026-08-28 : une perche ne compte pas les places. Ni colonne,
+	// ni champ, ni mention — un nombre de places serait déjà une manière de dire non.
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "Table au restaurant", "page", 4)
-	if !strings.Contains(GET(app, "/i/"+i.Jeton).Body.String(), "Capacité indicative : 4") {
-		t.Fatal("la capacité définie n'est pas affichée")
+	var n int
+	app.db.QueryRow(`SELECT count(*) FROM pragma_table_info('intentions') WHERE name = 'capacite'`).Scan(&n)
+	if n != 0 {
+		t.Fatal("la colonne capacite existe encore")
+	}
+	if page := GET(app, "/e/edtest").Body.String(); strings.Contains(page, `name="capacite"`) || strings.Contains(strings.ToLower(page), "places") {
+		t.Fatal("l'édition parle encore de places")
 	}
 }
 
@@ -298,7 +306,7 @@ func TestConv06_LaVoixDeLHoteSurChaquePage(t *testing.T) {
 	// et cette introduction accompagne chaque perche.
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	if !strings.Contains(GET(app, "/l/test").Body.String(), "voici mes envies du moment") {
 		t.Fatal("l'introduction manque sur la page de la liste")
 	}
@@ -315,7 +323,7 @@ func TestConv06_LaVoixDeLHoteSurChaquePage(t *testing.T) {
 func TestConv07_ReponseSansEnvoi(t *testing.T) {
 	app, m := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "on se réjouit", "anna@exemple.be")
 	if len(m.Envois) != 0 {
 		t.Fatalf("une réponse a déclenché %d envoi(s) — l'hôte va chercher l'information quand il veut", len(m.Envois))
@@ -327,7 +335,7 @@ func TestConv07_ReponseSansEnvoi(t *testing.T) {
 func TestConv08_ReponseSansCookieNiSession(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	rec := POST(app, "/i/"+i.Jeton+"/reponses", url.Values{"prenom": {"Anna"}, "statut": {"jy_serai"}})
 	if rec.Code != 303 {
 		t.Fatalf("répondre sans cookie ni session doit suffire, reçu %d", rec.Code)
@@ -342,7 +350,7 @@ func TestConv08_ReponseSansCookieNiSession(t *testing.T) {
 func TestConv09_IntentionPasseeAbsenteDuPublic(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	intentionTest(t, app, ilYA(2), "Vernissage", "page", nil)
+	intentionTest(t, app, ilYA(2), "Vernissage", "page")
 	if strings.Contains(GET(app, "/l/test").Body.String(), "Vernissage") {
 		t.Fatal("une intention passée reste sur la page publique")
 	}
@@ -354,7 +362,7 @@ func TestConv09_IntentionPasseeAbsenteDuPublic(t *testing.T) {
 func TestConv09_ArchiveViaJetonEdition(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, ilYA(2), "Vernissage", "page", nil)
+	i := intentionTest(t, app, ilYA(2), "Vernissage", "page")
 	app.db.Exec(`INSERT INTO reponses (intention_id, prenom, statut, mot) VALUES (?, 'Anna', 'jy_serai', 'belle soirée')`, i.ID)
 	body := GET(app, "/e/edtest").Body.String()
 	if !strings.Contains(body, "Anna") || !strings.Contains(body, "belle soirée") {
@@ -365,7 +373,7 @@ func TestConv09_ArchiveViaJetonEdition(t *testing.T) {
 func TestConv09_ReponsesPubliquesEffaceesApresDelai(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, ilYA(40), "Vernissage", "page", nil)
+	i := intentionTest(t, app, ilYA(40), "Vernissage", "page")
 	app.db.Exec(`INSERT INTO reponses (intention_id, prenom, statut, prenom_visible) VALUES (?, 'Anna', 'jy_serai', 1)`, i.ID)
 	rec := GET(app, "/i/"+i.Jeton)
 	if rec.Code != 200 {
@@ -386,7 +394,7 @@ func TestConv09_ReponsesPubliquesEffaceesApresDelai(t *testing.T) {
 func TestConv10_LettreAvantMecanique(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	body := GET(app, "/l/test").Body.String()
 	lettre, mecanique := strings.Index(body, "voici mes envies"), strings.Index(body, "KIKK")
 	if lettre < 0 || mecanique < 0 || lettre > mecanique {
@@ -404,7 +412,7 @@ func TestConv10_LettreAvantMecanique(t *testing.T) {
 func TestConv11_AnnulationNotifiee(t *testing.T) {
 	app, m := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "", "anna@exemple.be")
 	repondreTest(t, app, i.Jeton, "Marc", "peut_etre", "", "")
 	rec := POST(app, fmt.Sprintf("/e/edtest/intentions/%d/annuler", i.ID), nil)
@@ -429,7 +437,7 @@ func TestConv11_AnnulationNotifiee(t *testing.T) {
 func TestConv11_RienDeSocialNEstEnvoye(t *testing.T) {
 	app, m := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "un mot gentil", "anna@exemple.be")
 	repondreTest(t, app, i.Jeton, "Marc", "peut_etre", "", "marc@exemple.be")
 	GET(app, "/e/edtest")
@@ -451,7 +459,7 @@ func TestConv11_TypesDEnvoiBornes(t *testing.T) {
 func TestDecision_CarteOGToujoursComplete(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "Expo discrète", "lien", nil)
+	i := intentionTest(t, app, dans(3), "Expo discrète", "lien")
 	body := GET(app, "/i/"+i.Jeton).Body.String()
 	if !strings.Contains(body, `property="og:title"`) || !strings.Contains(body, "Expo discrète") {
 		t.Fatal("og:title incomplet pour une intention « lien seulement »")
@@ -464,7 +472,7 @@ func TestDecision_CarteOGToujoursComplete(t *testing.T) {
 func TestDecision_LienSeulementAbsentDeLaListe(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "Expo discrète", "lien", nil)
+	i := intentionTest(t, app, dans(3), "Expo discrète", "lien")
 	if strings.Contains(GET(app, "/l/test").Body.String(), "Expo discrète") {
 		t.Fatal("une intention « lien seulement » apparaît sur la page publique")
 	}
@@ -476,7 +484,7 @@ func TestDecision_LienSeulementAbsentDeLaListe(t *testing.T) {
 func TestDecision_HoteEffaceUneReponse(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "", "")
 	var idReponse int64
 	app.db.QueryRow(`SELECT id FROM reponses WHERE intention_id = ?`, i.ID).Scan(&idReponse)
@@ -496,7 +504,7 @@ func TestDecision_HoteEffaceUneReponse(t *testing.T) {
 func TestDecision_SansEmailLaPageLeDit(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	rec := POST(app, "/i/"+i.Jeton+"/reponses", url.Values{"prenom": {"Anna"}, "statut": {"jy_serai"}})
 	rec = GET(app, rec.Header().Get("Location"))
 	if !strings.Contains(strings.ToLower(rec.Body.String()), "revérifie la page avant d'y aller") {
@@ -507,7 +515,7 @@ func TestDecision_SansEmailLaPageLeDit(t *testing.T) {
 func TestDecision_ExportsToujoursDisponibles(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	intentionTest(t, app, dans(3), "KIKK", "page")
 	rec := GET(app, "/l/test.ics")
 	if rec.Code != 200 || !strings.Contains(rec.Body.String(), "BEGIN:VCALENDAR") {
 		t.Fatalf("export ICS indisponible : %d", rec.Code)
@@ -578,7 +586,7 @@ func TestDecision_AccueilSelonDOuOnArrive(t *testing.T) {
 func TestConv02_AhZutEstUneVraieReponse(t *testing.T) {
 	app, m := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(1), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(1), "KIKK", "page")
 	repondreTest(t, app, i.Jeton, "Anna", "jaurais_aime", "une prochaine fois", "anna@exemple.be")
 	page := GET(app, "/i/"+i.Jeton).Body.String()
 	if !strings.Contains(page, "Anna aurait bien aimé.") {
@@ -596,7 +604,7 @@ func TestConv02_AhZutEstUneVraieReponse(t *testing.T) {
 func TestDecision_PotDeMiel(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	rec := POST(app, "/i/"+i.Jeton+"/reponses", url.Values{"prenom": {"Bot"}, "statut": {"jy_serai"}, "verif": {"http://spam"}})
 	if rec.Code != 303 {
 		t.Fatalf("un robot qui remplit le champ caché est redirigé sans bruit, reçu %d", rec.Code)
@@ -747,19 +755,23 @@ func TestDecision_ReglagesTitreAdresseEmail(t *testing.T) {
 func TestDecision_UnePercheSeCorrigeEntierement(t *testing.T) {
 	app, m := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(5), "KIKK, Namurr", "page", nil)
+	i := intentionTest(t, app, dans(5), "KIKK, Namurr", "page")
 	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "", "anna@exemple.be")
 	form := url.Values{"titre": {"KIKK, Namur"}, "date": {i.Quand.String[:10]}, "heure": {""},
-		"lieu": {i.Lieu}, "description": {"journée du vendredi"}, "capacite": {"4"}, "visibilite": {"lien"}, "jy_vais": {"0"}}
+		"lieu": {i.Lieu}, "description": {"journée du vendredi"}, "fin": {dans(6)}, "visibilite": {"lien"}, "jy_vais": {"0"}}
 	if rec := POST(app, fmt.Sprintf("/e/edtest/intentions/%d/maj", i.ID), form); rec.Code != 303 {
 		t.Fatalf("maj : %d", rec.Code)
 	}
 	j, _, _ := app.intentionParJeton(i.Jeton)
-	if j.Titre != "KIKK, Namur" || j.Description != "journée du vendredi" || j.Capacite.Int64 != 4 || j.Visibilite != "lien" || !j.JyVais {
+	if j.Titre != "KIKK, Namur" || j.Description != "journée du vendredi" || j.Fin.String != dans(6) || j.Visibilite != "lien" || !j.JyVais {
 		t.Fatalf("correction non appliquée : %+v", j)
 	}
-	if len(m.Envois) != 0 {
-		t.Fatal("corriger une faute de frappe n'est pas de la logistique : personne n'est prévenu")
+	if len(m.Envois) != 1 {
+		t.Fatalf("ajouter un dernier jour est de la logistique : un mot, reçu %d", len(m.Envois))
+	}
+	m.Envois = nil
+	if rec := POST(app, fmt.Sprintf("/e/edtest/intentions/%d/maj", i.ID), form); rec.Code != 303 || len(m.Envois) != 0 {
+		t.Fatal("corriger sans rien changer aux dates ni au lieu : personne n'est prévenu")
 	}
 	form.Set("lieu", "Namur, gare")
 	POST(app, fmt.Sprintf("/e/edtest/intentions/%d/maj", i.ID), form)
@@ -816,7 +828,7 @@ func TestSecurite_CorpsBorne(t *testing.T) {
 func TestSecurite_LesModificationsSontLimitees(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	form := url.Values{"titre": {"KIKK"}, "date": {dans(3)}}
 	var dernier int
 	for k := 0; k < 16; k++ {
@@ -830,7 +842,7 @@ func TestSecurite_LesModificationsSontLimitees(t *testing.T) {
 func TestSecurite_UnEmailParPerche(t *testing.T) {
 	app, m := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(1), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(1), "KIKK", "page")
 	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "", "anna@exemple.be")
 	repondreTest(t, app, i.Jeton, "Anna", "peut_etre", "", "anna@exemple.be")
 	repondreTest(t, app, i.Jeton, "Bot", "jy_serai", "", "pas-un-email")
@@ -848,7 +860,7 @@ func TestSecurite_UnEmailParPerche(t *testing.T) {
 func TestSecurite_PlafondDeReponses(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	for k := 0; k < plafondReponses; k++ {
 		app.db.Exec(`INSERT INTO reponses (intention_id, prenom, statut) VALUES (?, 'x', 'jy_serai')`, i.ID)
 	}
@@ -947,7 +959,7 @@ func TestSecurite_EnTetes(t *testing.T) {
 func TestDecision_UneReponseParPrenom(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	repondreTest(t, app, i.Jeton, "Léa", "jy_serai", "", "")
 	rec := POST(app, "/i/"+i.Jeton+"/reponses", url.Values{"prenom": {"léa"}, "statut": {"peut_etre"}, "prenom_visible": {"1"}})
 	if !strings.HasPrefix(rec.Header().Get("Location"), "/i/"+i.Jeton+"?") {
@@ -1010,7 +1022,7 @@ func TestDecision_DatesLisibles(t *testing.T) {
 func TestDecision_AnnuleeProprement(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "", "")
 	POST(app, fmt.Sprintf("/e/edtest/intentions/%d/annuler", i.ID), nil)
 	page := GET(app, "/i/"+i.Jeton).Body.String()
@@ -1025,8 +1037,8 @@ func TestDecision_AnnuleeProprement(t *testing.T) {
 func TestDecision_EmailsDesInvitesPurges(t *testing.T) {
 	app, _ := appTest(t)
 	listeTest(t, app)
-	vieille := intentionTest(t, app, ilYA(40), "Vieille", "page", nil)
-	recente := intentionTest(t, app, dans(3), "Récente", "page", nil)
+	vieille := intentionTest(t, app, ilYA(40), "Vieille", "page")
+	recente := intentionTest(t, app, dans(3), "Récente", "page")
 	app.db.Exec(`INSERT INTO reponses (intention_id, prenom, statut, email) VALUES (?, 'Anna', 'jy_serai', 'a@exemple.be'), (?, 'Marc', 'jy_serai', 'm@exemple.be')`, vieille.ID, recente.ID)
 	app.purgerEmails()
 	var n int
@@ -1067,7 +1079,7 @@ func TestDecision_ErreursDansLeGabarit(t *testing.T) {
 func TestDecision_ConfirmerAvantAnnulerEtEffacer_PuisRetablir(t *testing.T) {
 	app, m := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(3), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(3), "KIKK", "page")
 	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "belle idée", "anna@exemple.be")
 	var idRep int64
 	app.db.QueryRow(`SELECT id FROM reponses`).Scan(&idRep)
@@ -1101,7 +1113,7 @@ func TestDecision_ConfirmerAvantAnnulerEtEffacer_PuisRetablir(t *testing.T) {
 func TestDecision_FermerMaListe(t *testing.T) {
 	app, m := appTest(t)
 	listeTest(t, app)
-	i := intentionTest(t, app, dans(1), "KIKK", "page", nil)
+	i := intentionTest(t, app, dans(1), "KIKK", "page")
 	repondreTest(t, app, i.Jeton, "Anna", "jy_serai", "", "anna@exemple.be")
 	if !strings.Contains(GET(app, "/e/edtest/fermer").Body.String(), "en retrait") {
 		t.Fatal("fermer passe par une confirmation")
@@ -1220,5 +1232,36 @@ func TestHorsPerimetre_LeSchemaResteMaigre(t *testing.T) {
 		if !vues[n] {
 			t.Errorf("table manquante : %s", n)
 		}
+	}
+}
+
+func TestDecision_PercheSurPlusieursJours(t *testing.T) {
+	// Premier retour d'usage (Arles, 28 septembre → 2 octobre) : une perche peut durer.
+	app, _ := appTest(t)
+	listeTest(t, app)
+	rec := POST(app, "/e/edtest/intentions", url.Values{"titre": {"Arles"}, "date": {ilYA(1)}, "fin": {dans(2)}})
+	if rec.Code != 303 {
+		t.Fatalf("création avec une fin : %d %s", rec.Code, rec.Body.String())
+	}
+	var j string
+	app.db.QueryRow(`SELECT jeton FROM intentions WHERE titre = 'Arles'`).Scan(&j)
+	page := GET(app, "/i/"+j).Body.String()
+	if !strings.Contains(page, "du ") || !strings.Contains(page, " au ") || !strings.Contains(page, `name="statut"`) {
+		t.Fatal("une perche en cours se dit « du … au … » et prend encore des réponses")
+	}
+	if !strings.Contains(GET(app, "/l/test").Body.String(), "Arles") {
+		t.Fatal("commencée hier, finie après-demain : la perche est encore sur la page")
+	}
+	ics := GET(app, "/i/"+j+".ics").Body.String()
+	if !strings.Contains(ics, "DTSTART;VALUE=DATE:") || !strings.Contains(ics, "DTEND;VALUE=DATE:") {
+		t.Fatalf("l'agenda reçoit les journées entières, du premier au dernier jour : %s", ics)
+	}
+	if rec := POST(app, "/e/edtest/intentions", url.Values{"titre": {"À l'envers"}, "date": {dans(5)}, "fin": {dans(2)}}); rec.Code != 400 {
+		t.Fatalf("une fin avant le début est refusée, reçu %d", rec.Code)
+	}
+	i := intentionTest(t, app, ilYA(3), "Finie", "page")
+	app.db.Exec(`UPDATE intentions SET fin = ? WHERE id = ?`, ilYA(1), i.ID)
+	if strings.Contains(GET(app, "/l/test").Body.String(), "Finie") {
+		t.Fatal("après son dernier jour, la perche quitte la page")
 	}
 }

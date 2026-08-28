@@ -30,10 +30,10 @@ CREATE TABLE intentions (
     titre        TEXT NOT NULL,
     description  TEXT NOT NULL DEFAULT '',
     quand        TEXT,                     -- ISO 8601 ; NULL = « à fixer » (intention ouverte)
+    fin          TEXT,                     -- dernier jour (date ISO) si la perche dure plusieurs jours
     echeance_decision TEXT,                -- intention ouverte : sans échéance, elle recréerait l'attente
     lieu         TEXT NOT NULL DEFAULT '',
     url_externe  TEXT,                     -- l'expo, le festival — carte d'aperçu et coïncidences
-    capacite     INTEGER,                  -- indicative, jamais bloquante
     jy_vais_de_toute_facon INTEGER NOT NULL DEFAULT 1,
     visibilite   TEXT NOT NULL DEFAULT 'page' CHECK (visibilite IN ('page', 'lien')),
     annulee_le   TEXT,                     -- annulation = logistique : notifiée aux e-mails connus

@@ -94,7 +94,7 @@ func (app *App) retablirIntention(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		app.notifierLogistique(intention.ID, "« "+intention.Titre+" » est de nouveau d'actualité",
-			fmt.Sprintf("« %s » (%s) est finalement maintenu.\n\n%s/i/%s", intention.Titre, quandFR(intention.Quand), app.baseURL, intention.Jeton))
+			fmt.Sprintf("« %s » (%s) est finalement maintenu.\n\n%s/i/%s", intention.Titre, intention.QuandFR(), app.baseURL, intention.Jeton))
 	}
 	http.Redirect(w, r, fmt.Sprintf("/e/%s?ok=retablie#perche-%d", liste.JetonEdition, intention.ID), http.StatusSeeOther)
 }

@@ -21,7 +21,7 @@ func (app *App) boucleRappels() {
 // pas seulement masqué (décision 2026-08-28, vie privée des invités).
 func (app *App) purgerEmails() {
 	if _, err := app.db.Exec(`UPDATE reponses SET email = NULL WHERE email IS NOT NULL AND intention_id IN
-		(SELECT id FROM intentions WHERE quand IS NOT NULL AND date(quand) < date('now', '-30 days'))`); err != nil {
+		(SELECT id FROM intentions WHERE quand IS NOT NULL AND date(coalesce(fin, quand)) < date('now', '-30 days'))`); err != nil {
 		log.Printf("purge e-mails : %v", err)
 	}
 }

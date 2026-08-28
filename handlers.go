@@ -302,8 +302,8 @@ func phraseAuraitAime(prenoms []string) string {
 	return strings.Join(prenoms[:len(prenoms)-1], ", ") + " et " + prenoms[len(prenoms)-1] + " auraient bien aimé."
 }
 
-// phrasePresences : « Seront là : Léa, Tom, et une personne discrète — 3 sur 4 places environ. »
-func phrasePresences(visibles []string, discrets int, capacite sql.NullInt64) string {
+// phrasePresences : « Seront là : Léa, Tom, et une personne discrète. »
+func phrasePresences(visibles []string, discrets int) string {
 	if len(visibles)+discrets == 0 {
 		return ""
 	}
@@ -315,11 +315,7 @@ func phrasePresences(visibles []string, discrets int, capacite sql.NullInt64) st
 	default:
 		parts = append(parts, fmt.Sprintf("%d personnes discrètes", discrets))
 	}
-	s := "Seront là : " + strings.Join(parts, ", ")
-	if capacite.Valid {
-		s += fmt.Sprintf(" — %d sur %d places environ", len(visibles)+discrets, capacite.Int64)
-	}
-	return s + "."
+	return "Seront là : " + strings.Join(parts, ", ") + "."
 }
 
 func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
@@ -366,7 +362,7 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 	if liste.FermeeLe.Valid {
 		liste.Lettre = ""
 	}
-	ogDesc := quandFR(intention.Quand)
+	ogDesc := intention.QuandFR()
 	if intention.Lieu != "" {
 		ogDesc += " — " + intention.Lieu
 	}
@@ -376,7 +372,7 @@ func (app *App) voirIntention(w http.ResponseWriter, r *http.Request) {
 		"Liste":            liste,
 		"I":                intention,
 		"Ouverte":          ouverte,
-		"Presences":        phrasePresences(jySerai, discrets, intention.Capacite),
+		"Presences":        phrasePresences(jySerai, discrets),
 		"PrenomsPeutEtre":  peutEtre,
 		"AuraitAime":       phraseAuraitAime(auraitAime),
 		"LienSeulement":    intention.Visibilite == "lien",
@@ -570,20 +566,28 @@ func (app *App) reglages(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=reglages#reglages", http.StatusSeeOther)
 }
 
-func quandDepuisForm(r *http.Request) (string, error) {
+// quandDepuisForm : la date (avec l'heure si donnée) et, si la perche dure, son dernier jour —
+// qui doit suivre le premier. Une fin égale au premier jour n'en est pas une.
+func quandDepuisForm(r *http.Request) (quand string, fin any, err error) {
 	date := strings.TrimSpace(r.FormValue("date"))
 	heure := strings.TrimSpace(r.FormValue("heure"))
 	if date == "" {
-		return "", fmt.Errorf("une intention v0 porte une date")
+		return "", nil, fmt.Errorf("une intention v0 porte une date")
 	}
-	quand := date
+	quand = date
 	if heure != "" {
 		quand += "T" + heure
 	}
 	if _, _, err := analyserQuand(quand); err != nil {
-		return "", err
+		return "", nil, err
 	}
-	return quand, nil
+	if f := strings.TrimSpace(r.FormValue("fin")); f != "" && f != date {
+		if _, _, err := analyserQuand(f); err != nil || f < date {
+			return "", nil, fmt.Errorf("la fin précède le début")
+		}
+		fin = f
+	}
+	return quand, fin, nil
 }
 
 func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
@@ -604,26 +608,22 @@ func (app *App) creerIntention(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
-	quand, err := quandDepuisForm(r)
+	quand, fin, err := quandDepuisForm(r)
 	if err != nil {
-		app.erreur(w, r, http.StatusBadRequest, "Il faut une date — pour l'instant, une perche se tend à un jour précis.")
+		app.erreur(w, r, http.StatusBadRequest, "Il faut une date, et si la perche dure plusieurs jours, une fin qui suit le début.")
 		return
 	}
 	visibilite := "page"
 	if r.FormValue("visibilite") == "lien" {
 		visibilite = "lien"
 	}
-	var capacite any
-	if c, err := strconv.Atoi(r.FormValue("capacite")); err == nil && c > 0 {
-		capacite = c
-	}
 	jyVais := true // décision 2026-08-28 : « j'y vais de toute façon », sans option
 	_, err = app.db.Exec(`INSERT INTO intentions
-		(liste_id, jeton, titre, description, quand, lieu, url_externe, capacite, jy_vais_de_toute_facon, visibilite)
+		(liste_id, jeton, titre, description, quand, fin, lieu, url_externe, jy_vais_de_toute_facon, visibilite)
 		VALUES (?,?,?,?,?,?,?,?,?,?)`,
-		liste.ID, jeton(12), titre, r.FormValue("description"), quand,
+		liste.ID, jeton(12), titre, r.FormValue("description"), quand, fin,
 		strings.TrimSpace(r.FormValue("lieu")), nullSi(urlPlausible(r.FormValue("url_externe"))),
-		capacite, jyVais, visibilite)
+		jyVais, visibilite)
 	if err != nil {
 		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
@@ -705,7 +705,7 @@ func (app *App) annulerIntention(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		app.notifierLogistique(intention.ID, "annulation : "+intention.Titre,
-			fmt.Sprintf("« %s » (%s) est annulé.\n\n%s/i/%s", intention.Titre, quandFR(intention.Quand), app.baseURL, intention.Jeton))
+			fmt.Sprintf("« %s » (%s) est annulé.\n\n%s/i/%s", intention.Titre, intention.QuandFR(), app.baseURL, intention.Jeton))
 	}
 	http.Redirect(w, r, "/e/"+liste.JetonEdition+"?ok=annulee#archive", http.StatusSeeOther)
 }
@@ -722,9 +722,9 @@ func (app *App) majIntention(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
-	quand, err := quandDepuisForm(r)
+	quand, fin, err := quandDepuisForm(r)
 	if err != nil {
-		app.erreur(w, r, http.StatusBadRequest, "Il faut une date valide.")
+		app.erreur(w, r, http.StatusBadRequest, "Il faut une date valide, et si la perche dure plusieurs jours, une fin qui suit le début.")
 		return
 	}
 	titre := strings.TrimSpace(r.FormValue("titre"))
@@ -737,25 +737,20 @@ func (app *App) majIntention(w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("visibilite") == "lien" {
 		visibilite = "lien"
 	}
-	var capacite any
-	if c, err := strconv.Atoi(r.FormValue("capacite")); err == nil && c > 0 {
-		capacite = c
-	}
 	jyVais := true
-	// Tout se corrige ; seuls la date et le lieu — la logistique — valent un mot aux invités.
-	change := quand != intention.Quand.String || lieu != intention.Lieu
-	if _, err := app.db.Exec(`UPDATE intentions SET titre = ?, description = ?, quand = ?, lieu = ?, url_externe = ?,
-		capacite = ?, visibilite = ?, jy_vais_de_toute_facon = ? WHERE id = ?`,
-		titre, r.FormValue("description"), quand, lieu, nullSi(urlPlausible(r.FormValue("url_externe"))),
-		capacite, visibilite, jyVais, intention.ID); err != nil {
+	// Tout se corrige ; seuls les dates et le lieu — la logistique — valent un mot aux invités.
+	finTexte, _ := fin.(string)
+	change := quand != intention.Quand.String || lieu != intention.Lieu || finTexte != intention.Fin.String
+	if _, err := app.db.Exec(`UPDATE intentions SET titre = ?, description = ?, quand = ?, fin = ?, lieu = ?, url_externe = ?,
+		visibilite = ?, jy_vais_de_toute_facon = ? WHERE id = ?`,
+		titre, r.FormValue("description"), quand, fin, lieu, nullSi(urlPlausible(r.FormValue("url_externe"))),
+		visibilite, jyVais, intention.ID); err != nil {
 		app.erreur(w, r, http.StatusInternalServerError, "Ça n'a pas pu être enregistré. Réessaie dans un instant.")
 		return
 	}
-	intention.Titre = titre
+	intention.Titre, intention.Quand, intention.Fin = titre, sqlString(quand), sqlString(finTexte)
 	if change && !intention.AnnuleeLe.Valid {
-		var q = quand
-		msg := fmt.Sprintf("« %s » change : %s", intention.Titre,
-			quandFR(sqlString(q)))
+		msg := fmt.Sprintf("« %s » change : %s", intention.Titre, intention.QuandFR())
 		if lieu != "" {
 			msg += " — " + lieu
 		}

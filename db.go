@@ -53,6 +53,20 @@ func migrer(db *sql.DB) error {
 			return err
 		}
 	}
+	// 2026-08-28 (seconde passe) : une perche peut durer plusieurs jours — colonne fin ;
+	// la capacité n'existe plus — colonne retirée.
+	db.QueryRow(`SELECT count(*) FROM pragma_table_info('intentions') WHERE name = 'fin'`).Scan(&n)
+	if n == 0 {
+		if _, err := db.Exec(`ALTER TABLE intentions ADD COLUMN fin TEXT`); err != nil {
+			return err
+		}
+	}
+	db.QueryRow(`SELECT count(*) FROM pragma_table_info('intentions') WHERE name = 'capacite'`).Scan(&n)
+	if n > 0 {
+		if _, err := db.Exec(`ALTER TABLE intentions DROP COLUMN capacite`); err != nil {
+			return err
+		}
+	}
 	if strings.Contains(def, "jaurais_aime") {
 		return nil
 	}
