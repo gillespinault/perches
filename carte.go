@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"embed"
 	"encoding/hex"
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -43,12 +44,20 @@ var (
 
 // Carte : ce qu'il y a à dire en une image.
 type Carte struct {
-	Titre   string // le titre de la liste ou de l'événement
-	Sous    string // la première phrase de la lettre, ou les dates et le lieu
-	Voix    bool   // Sous est la voix de l'hôte (serif) plutôt qu'un fait (sans)
-	Perche  string // « J'y vais le 24 oct. » — vide si aucune perche n'est tendue
-	Pied    string // l'adresse de l'instance
-	Compact bool   // titre plus petit d'emblée (page d'une liste : la lettre a la place)
+	Titre   string       // le titre de la liste ou de l'événement
+	Sous    string       // la première phrase de la lettre, ou les dates et le lieu
+	Voix    bool         // Sous est la voix de l'hôte (serif) plutôt qu'un fait (sans)
+	Perche  string       // « J'y vais le 24 oct. » — vide si aucune perche n'est tendue
+	Pied    string       // l'adresse de l'instance
+	Compact bool         // titre plus petit d'emblée (page d'une liste : la lettre a la place)
+	Lignes  []LigneCarte // les prochains événements (carte d'une liste)
+}
+
+// LigneCarte : un événement en une ligne — « 28 sept. · Les Rencontres d'Arles », le bâton devant
+// si l'hôte y va.
+type LigneCarte struct {
+	Date, Titre string
+	Perche      bool
 }
 
 var (
@@ -227,9 +236,29 @@ func dessinerCarte(c Carte) ([]byte, error) {
 		ecrire(img, fP, teinteEncre, carteMarge+48, y, c.Perche)
 	}
 
-	// le pied
+	// les prochains événements, tant qu'il reste de la place au-dessus du pied
+	if len(c.Lignes) > 0 {
+		fL := face(policeSans, 28)
+		fD := face(policeSans, 24)
+		hauteur := fL.Metrics().Height.Ceil() * 140 / 100
+		y += 16 + fL.Metrics().Ascent.Ceil()
+		colonne := carteMarge + 46 + (&font.Drawer{Face: fD}).MeasureString("00 sept. 0000").Ceil()
+		for _, l := range c.Lignes {
+			if y > carteHauteur-84 {
+				break
+			}
+			if l.Perche {
+				baton(img, carteMarge, y-24, 28)
+			}
+			ecrire(img, fD, teinteDoux, carteMarge+46, y, l.Date)
+			titre := couperEnLignes(&font.Drawer{Face: fL}, l.Titre, carteLargeur-carteMarge-colonne, 1)
+			ecrire(img, fL, teinteEncre, colonne, y, titre[0])
+			y += hauteur
+		}
+	}
+
+	// le pied : l'adresse de l'instance
 	fPied := face(policeSans, 22)
-	ecrire(img, fPied, teinteDoux, carteMarge, carteHauteur-56, "des intentions, sans obligation.")
 	if c.Pied != "" {
 		l := (&font.Drawer{Face: fPied}).MeasureString(c.Pied).Ceil()
 		ecrire(img, fPied, teinteDoux, carteLargeur-carteMarge-l, carteHauteur-56, c.Pied)
@@ -316,9 +345,40 @@ func empreinteCarte(parts ...string) string {
 }
 
 // carteDeListe et carteDIntention : ce que dit chaque carte.
-func (app *App) carteDeListe(liste *Liste, nbPerches int) Carte {
+// La carte d'une liste : le titre, la première phrase de la lettre, puis les trois prochains
+// événements — c'est ce qu'un ami voit sous le lien, avant même d'ouvrir la page.
+func (app *App) carteDeListe(liste *Liste, intentions []Intention) Carte {
+	nbPerches := 0
+	for _, i := range intentions {
+		if i.Tendue() {
+			nbPerches++
+		}
+	}
 	sous := descriptionOG(sansMarkdown(liste.Lettre), nbPerches)
-	return Carte{Titre: liste.Titre, Sous: sous, Voix: true, Pied: hoteDeBase(app.baseURL), Compact: true}
+	return Carte{Titre: liste.Titre, Sous: sous, Voix: true, Pied: hoteDeBase(app.baseURL), Compact: true,
+		Lignes: lignesDeCarte(intentions, 3)}
+}
+
+// lignesDeCarte : les n prochains événements, dans l'ordre de la chronologie.
+func lignesDeCarte(intentions []Intention, n int) []LigneCarte {
+	var lignes []LigneCarte
+	for k := range intentions {
+		if len(lignes) == n {
+			break
+		}
+		i := &intentions[k]
+		lignes = append(lignes, LigneCarte{Date: i.JourCourt(), Titre: i.Titre, Perche: i.Tendue()})
+	}
+	return lignes
+}
+
+// empreinteLignes : ce que les lignes disent, pour l'empreinte de l'adresse de la carte.
+func empreinteLignes(lignes []LigneCarte) string {
+	var b strings.Builder
+	for _, l := range lignes {
+		fmt.Fprintf(&b, "%s|%s|%v;", l.Date, l.Titre, l.Perche)
+	}
+	return b.String()
 }
 
 func (app *App) carteDIntention(i *Intention) Carte {

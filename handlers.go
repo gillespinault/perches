@@ -260,19 +260,13 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 			intentions = append(intentions, i)
 		}
 	}
-	nbTendues := 0
-	for _, i := range intentions {
-		if i.Tendue() {
-			nbTendues++
-		}
-	}
 	switch format {
 	case "ics":
 		servirICS(w, liste.Titre, intentions, app.baseURL)
 	case "json":
 		servirJSONPublic(w, liste, intentions)
 	case "jpg":
-		app.servirCarte(w, r, app.carteDeListe(liste, nbTendues))
+		app.servirCarte(w, r, app.carteDeListe(liste, intentions))
 	default:
 		merci, percheMerci := merciDe(r), r.URL.Query().Get("perche")
 		vues, nbPerches := []VuePerche{}, 0
@@ -291,7 +285,7 @@ func (app *App) voirListe(w http.ResponseWriter, r *http.Request) {
 		app.rendre(w, r, "liste.html", map[string]any{
 			"TitrePage": liste.Titre,
 			"OG": app.og(liste.Titre, descriptionOG(sansMarkdown(liste.Lettre), nbPerches), "/l/"+liste.Slug,
-				"/l/"+liste.Slug+".jpg?v="+empreinteCarte(liste.Titre, liste.Lettre, fmt.Sprint(nbPerches))),
+				"/l/"+liste.Slug+".jpg?v="+empreinteCarte(liste.Titre, liste.Lettre, empreinteLignes(lignesDeCarte(intentions, 3)))),
 			"Alternate": app.baseURL + "/l/" + liste.Slug + ".json",
 			"Liste":     liste,
 			"Perches":   vues,
@@ -311,13 +305,14 @@ func descriptionOG(lettre string, nbPerches int) string {
 			return couper(l, 140)
 		}
 	}
+	// Sans phrase à citer, un fait : combien de perches.
 	switch nbPerches {
 	case 0:
-		return "Une liste d'intentions, sans obligation."
+		return "Une page Perches."
 	case 1:
-		return "Une perche — une liste d'intentions, sans obligation."
+		return "Une perche."
 	}
-	return fmt.Sprintf("%d perches — une liste d'intentions, sans obligation.", nbPerches)
+	return fmt.Sprintf("%d perches.", nbPerches)
 }
 
 func couper(s string, n int) string {
